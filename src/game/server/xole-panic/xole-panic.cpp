@@ -15,6 +15,7 @@ CGameControllerXole::CGameControllerXole(class CGameContext *pGameServer)
 	// DM, TDM and CTF are reserved for teeworlds original modes.
 	m_pGameType = "XolePanic";
 	m_IsDoInfection = false;
+	m_RoundStartTick = 0;
 	m_FristInfectNum = 0;
 }
 
@@ -22,40 +23,40 @@ void CGameControllerXole::Tick()
 {
 	if(GameServer()->m_NumPlayers < 2)
 	{
-		m_RoundStartTick++;
+		m_RoundStartTick = Server()->Tick();
 	}
-	IGameController::Tick();
 	DoWincheck();
+	IGameController::Tick();
+	return;
 }
 
 void CGameControllerXole::DoWincheck()
 {
 	if(m_GameOverTick == -1 && !GameServer()->m_World.m_ResetRequested)
 	{
-		if(GameServer()->m_NumPlayers > 1)
+		// check score win condition
+		if((Server()->Tick()-m_RoundStartTick) >= g_Config.m_SvTimelimit*Server()->TickSpeed()*60)
 		{
-			// check score win condition
-			if(g_Config.m_SvTimelimit > 0 &&
-			(Server()->Tick()-m_RoundStartTick) >= g_Config.m_SvTimelimit*Server()->TickSpeed()*60)
-			{
-				GameServer()->SendChatTarget(-1, _("{int:Num} Humans win this round."), "Num", &GameServer()->m_NumHumans, NULL);
-				EndRound();
-			}else if(GameServer()->m_SafeZoneTick >= 5 * Server()->TickSpeed())
-			{
-				int Second = (Server()->Tick()-m_RoundStartTick) / 50;
-				GameServer()->SendChatTarget(-1, _("Zombies win this round in {sec:Second}."), "Second", &Second, NULL);
-				EndRound();
-			}
+			EndRound();
+			GameServer()->SendChatTarget(-1, _("{int:Num} Humans win this round."), "Num", &GameServer()->m_NumHumans, NULL);
+			GameServer()->CreateSoundGlobal(SOUND_CTF_CAPTURE);
+		}else if(GameServer()->m_SafeZoneTick >= 5 * Server()->TickSpeed())
+		{
+			int Second = (Server()->Tick()-m_RoundStartTick) / 50;
+			EndRound();
+			GameServer()->SendChatTarget(-1, _("Zombies win this round in {sec:Second}."), "Second", &Second, NULL);
+			GameServer()->CreateSoundGlobal(SOUND_CTF_CAPTURE);
+		}
 
-			if(IsInfectionStarted() && !m_IsDoInfection)
+		if(IsInfectionStarted() && !m_IsDoInfection)
+		{
+			GetFristInfectNum();
+			if(GameServer()->m_NumZombies < m_FristInfectNum)
 			{
-				GetFristInfectNum();
-				if(GameServer()->m_NumZombies < m_FristInfectNum)
-				{
-					RandomPlayerInfect();
-				}
-				m_IsDoInfection = true;
+				DoFairInfection();
+				DoUnfairInfection();
 			}
+			m_IsDoInfection = true;
 		}
 	}
 }
@@ -100,7 +101,51 @@ void CGameControllerXole::GetFristInfectNum()
 	}else m_FristInfectNum = 7;
 }
 
-void CGameControllerXole::RandomPlayerInfect()
+void CGameControllerXole::DoFairInfection()
+{
+	std::vector<int> FairInfVector;
+
+	//initiate infection vector when player is human and was no infected before
+	CPlayerIterator<PLAYERITER_INGAME> Iter(GameServer()->m_apPlayers);
+	while(Iter.Next())
+	{
+		//note: spectators are already zombies
+
+		//do not infect zombies
+		if(Iter.Player()->IsZombie()) continue;
+
+		//do not infect clients in two rounds consecutively
+		if(Server()->IsClientInfectedBefore(Iter.ClientID())) continue;
+
+		FairInfVector.push_back(Iter.ClientID());
+	}
+
+	// fair infection process,
+	while( FairInfVector.size() > 0 && GameServer()->m_NumHumans > 1 && GameServer()->m_NumZombies < m_FristInfectNum)
+	{
+		//dbg_msg("Game", "#FairToInfect: %d", FairInfVector.size());
+
+		//generate random number
+		int random = random_int(0, FairInfVector.size()-1);
+
+		//do not infect client consecutively in two rounds
+		Server()->InfectClient(FairInfVector[random]);
+
+		//infect player behind clientid taken from vector
+		GameServer()->m_apPlayers[FairInfVector[random]]->StartInfection();
+
+		//notification to other players
+		GameServer()->SendChatTarget(-1, _("{str:VictimName} has been infected"),
+		                                          "VictimName", Server()->ClientName(FairInfVector[random]),
+		                                          NULL
+		                                          );
+
+		//remove infected vector element
+		FairInfVector.erase(FairInfVector.begin() + random);
+	}
+}
+
+void CGameControllerXole::DoUnfairInfection()
 {
 	std::vector<int> UnfairInfVector;
 
@@ -117,7 +162,7 @@ void CGameControllerXole::RandomPlayerInfect()
 	}
 
 	// Unfair infection process
-	while( UnfairInfVector.size() > 0 && GameServer()->m_NumZombies < m_FristInfectNum)
+	while( UnfairInfVector.size() > 0 && GameServer()->m_NumHumans > 1 && GameServer()->m_NumZombies < m_FristInfectNum)
 	{
 		//dbg_msg("Game", "#NotFairToInfect: %d", UnfairInfVector.size());
 
@@ -126,7 +171,6 @@ void CGameControllerXole::RandomPlayerInfect()
 
 		//infect player behind clientid taken from vector
 		GameServer()->m_apPlayers[UnfairInfVector[random]]->StartInfection();
-		GameServer()->m_apPlayers[UnfairInfVector[random]]->TryRespawn();
 
 		//notification to other players
 		GameServer()->SendChatTarget(-1, _("{str:VictimName} has been infected"),

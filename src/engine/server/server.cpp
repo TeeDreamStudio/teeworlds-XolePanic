@@ -448,6 +448,20 @@ int CServer::Init()
 
 	m_CurrentGameTick = 0;
 
+	// XolePanic Start
+	SetWeaponMaxAmmo(WEAPON_HAMMER, -1);
+	SetWeaponMaxAmmo(WEAPON_GUN, 10);
+	SetWeaponMaxAmmo(WEAPON_SHOTGUN, 10);
+	SetWeaponMaxAmmo(WEAPON_GRENADE, 10);
+	SetWeaponMaxAmmo(WEAPON_RIFLE, 10);
+
+	SetWeaponAmmoRegenTime(WEAPON_HAMMER, 0);
+	SetWeaponAmmoRegenTime(WEAPON_GUN, 25);
+	SetWeaponAmmoRegenTime(WEAPON_SHOTGUN, 75);
+	SetWeaponAmmoRegenTime(WEAPON_GRENADE, 100);
+	SetWeaponAmmoRegenTime(WEAPON_RIFLE, 125);
+	// XolePanic End
+
 	return 0;
 }
 
@@ -2048,3 +2062,22 @@ void CServer::UnInfectClient(int ClientID)
 	m_aClients[ClientID].m_WasInfected = 0;
 }
 
+int CServer::GetWeaponMaxAmmo(int WID)
+{
+	return m_aXoleWeapons[WID].m_MaxAmmo;
+}
+
+int CServer::GetWeaponAmmoRegenTime(int WID)
+{
+	return m_aXoleWeapons[WID].m_AmmoRegenTime;
+}
+
+void CServer::SetWeaponMaxAmmo(int WID, int MaxAmmo)
+{
+	m_aXoleWeapons[WID].m_MaxAmmo = MaxAmmo;
+}
+
+void CServer::SetWeaponAmmoRegenTime(int WID, int RegenTime)
+{
+	m_aXoleWeapons[WID].m_AmmoRegenTime = RegenTime;
+}

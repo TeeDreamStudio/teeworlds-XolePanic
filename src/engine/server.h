@@ -8,6 +8,18 @@
 #include <game/generated/protocol.h>
 #include <engine/shared/protocol.h>
 
+enum
+{
+	XOLEWEAPON_NONE,
+	XOLEWEAPON_HAMMER,
+	XOLEWEAPON_GUN,
+	XOLEWEAPON_SHOTGUN,
+	XOLEWEAPON_GRENADE,
+	XOLEWEAPON_RIFLE,
+	XOLEWEAPON_NINJA,
+	NUM_XOLEWEAPONS,
+};
+
 class IServer : public IInterface
 {
 	MACRO_INTERFACE("server", 0)
@@ -173,6 +185,11 @@ public:
 	virtual int IsClientInfectedBefore(int ClientID) = 0;
 	virtual void InfectClient(int ClientID) = 0;
 	virtual void UnInfectClient(int ClientID) = 0;
+
+	virtual int GetWeaponMaxAmmo(int WID) = 0;
+	virtual int GetWeaponAmmoRegenTime(int WID) = 0;
+	virtual void SetWeaponMaxAmmo(int WID, int MaxAmmo) = 0;
+	virtual void SetWeaponAmmoRegenTime(int WID, int RegenTime) = 0;
 };
 
 class IGameServer : public IInterface

@@ -137,6 +137,7 @@ public:
 	CCharacterCore m_Core;
 	// Xole Panic Start
 	int GetRole() const;
+	int GetInfWeaponID(int WID);
 	bool IsZombie() const;
 	bool IsHuman() const;
 	bool IsWillDie() const;
@@ -146,6 +147,7 @@ public:
 	void GiveRoleWeapon();
 	void UpdateTuningParam();
 	int m_AirJumpCounter;
+	int m_HelpTick;
 	bool m_CanSwitchRole;
 	// Xole Panic End
 };

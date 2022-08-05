@@ -181,6 +181,14 @@
             "value": "警告!!!安全区域存在僵尸!!!\n剩余时间: {sec:Time}"
         },
         {
+            "key": "If no humans to help You.\nYou will die in {sec:Time}",
+            "value": "如果没有人类来救援你.\n你将会在{sec:Time}后死亡"
+        },
+        {
+            "key": "Use hook to revive him",
+            "value": "使用钩子来救援他."
+        },
+        {
             "key": "{str:VictimName} has been infected",
             "value": "{str:VictimName} 被感染了"
         },

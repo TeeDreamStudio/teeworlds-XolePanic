@@ -251,6 +251,11 @@ public:
 	virtual void SnapFreeID(int ID);
 	virtual void *SnapNewItem(int Type, int ID, int Size);
 	void SnapSetStaticsize(int ItemType, int Size);
+	struct XoleWeaponStat
+	{
+		int m_AmmoRegenTime;
+		int m_MaxAmmo;
+	} m_aXoleWeapons[NUM_XOLEWEAPONS];
 	
 public:
 	virtual const char* GetClientLanguage(int ClientID);
@@ -260,6 +265,10 @@ public:
 	virtual int IsClientInfectedBefore(int ClientID);
 	virtual void InfectClient(int ClientID);
 	virtual void UnInfectClient(int ClientID);
+	virtual int GetWeaponMaxAmmo(int WID);
+	virtual int GetWeaponAmmoRegenTime(int WID);
+	virtual void SetWeaponMaxAmmo(int WID, int MaxAmmo);
+	virtual void SetWeaponAmmoRegenTime(int WID, int RegenTime);
 };
 
 #endif

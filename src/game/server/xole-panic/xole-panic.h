@@ -16,7 +16,8 @@ public:
 	virtual void StartRound();
 
 	void GetFristInfectNum();
-	void RandomPlayerInfect();
+	void DoFairInfection();
+	void DoUnfairInfection();
 	bool m_IsDoInfection;
 	int m_FristInfectNum;
 };

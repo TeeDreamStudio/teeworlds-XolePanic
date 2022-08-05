@@ -622,8 +622,11 @@ void CGameContext::OnClientEnter(int ClientID)
 {
 	//world.insert_entity(&players[client_id]);
 	m_apPlayers[ClientID]->m_IsInGame = true;
-	m_apPlayers[ClientID]->SetRole(PLAYERROLE_MEDIC);
-	m_apPlayers[ClientID]->Respawn();
+
+	if(m_pController->IsInfectionStarted()) m_apPlayers[ClientID]->StartInfection();
+	else m_apPlayers[ClientID]->SetRole(PLAYERROLE_MEDIC);
+	
+	m_apPlayers[ClientID]->TryRespawn();
 	char aBuf[512];
 	str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientID), m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
 	SendChatTarget(-1, _("'{str:PlayerName}' entered and joined the game"),"PlayerName", Server()->ClientName(ClientID), NULL);

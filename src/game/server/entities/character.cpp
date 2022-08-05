@@ -64,6 +64,7 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_WillDieTick = 0;
 	m_WillDieKiller = -1;
 	m_WillDieWeapon = -1;
+	m_HelpTick = 0;
 	m_WillDie = false;
 	m_InInfectZone = false;
 	m_CanSwitchRole = true;
@@ -316,11 +317,6 @@ void CCharacter::FireWeapon()
 			{
 				CCharacter *pTarget = apEnts[i];
 
-				if(pTarget->IsHuman() && IsHuman() && pTarget->IsWillDie())
-				{
-					pTarget->UnWillDie();
-				}
-
 				if ((pTarget == this) || GameServer()->Collision()->IntersectLine(ProjStartPos, pTarget->m_Pos, NULL, NULL))
 					continue;
 
@@ -438,25 +434,26 @@ void CCharacter::HandleWeapons()
 	FireWeapon();
 
 	// ammo regen
-	int AmmoRegenTime = g_pData->m_Weapons.m_aId[m_ActiveWeapon].m_Ammoregentime;
-	if(AmmoRegenTime)
+	for(int i=WEAPON_GUN; i<=WEAPON_RIFLE; i++)
 	{
-		// If equipped and not active, regen ammo?
-		if (m_ReloadTimer <= 0)
+		int WID = GetInfWeaponID(i);
+		int AmmoRegenTime = Server()->GetWeaponAmmoRegenTime(WID);
+		int MaxAmmo = Server()->GetWeaponMaxAmmo(GetInfWeaponID(i));
+		
+		if(AmmoRegenTime)
 		{
-			if (m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart < 0)
-				m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart = Server()->Tick();
-
-			if ((Server()->Tick() - m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart) >= AmmoRegenTime * Server()->TickSpeed() / 1000)
+			if(m_ReloadTimer <= 0)
 			{
-				// Add some ammo
-				m_aWeapons[m_ActiveWeapon].m_Ammo = min(m_aWeapons[m_ActiveWeapon].m_Ammo + 1, 10);
-				m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart = -1;
+				if (m_aWeapons[i].m_AmmoRegenStart < 0)
+					m_aWeapons[i].m_AmmoRegenStart = Server()->Tick();
+
+				if ((Server()->Tick() - m_aWeapons[i].m_AmmoRegenStart) >= AmmoRegenTime)
+				{
+					// Add some ammo
+					m_aWeapons[i].m_Ammo = min(m_aWeapons[i].m_Ammo + 1, MaxAmmo);
+					m_aWeapons[i].m_AmmoRegenStart = -1;
+				}
 			}
-		}
-		else
-		{
-			m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart = -1;
 		}
 	}
 
@@ -565,8 +562,10 @@ void CCharacter::Tick()
 			}
 			m_Input.m_Jump = 0;
 			m_Input.m_Direction = 0;
+			m_Input.m_TargetX = 0;
+			m_Input.m_TargetY = 0;
 			m_Input.m_Hook = 0;
-			GameServer()->SendBroadcast_VL(_("You will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
+			GameServer()->SendBroadcast_VL(_("If no humans to help You.\nYou will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
 		}else
 		{
 			m_pPlayer->StartInfection();
@@ -576,6 +575,25 @@ void CCharacter::Tick()
 
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true, m_pPlayer->GetNextTuningParams());
+
+	vec2 HelpPos;
+	CCharacter *TargetChr = GameServer()->m_World.IntersectCharacter(m_Pos, m_Pos, 6.0f, HelpPos, this);
+	if(TargetChr && TargetChr->IsWillDie())
+	{
+		if(m_Input.m_Hook)
+		{
+			if(TargetChr)
+			{
+				TargetChr->UnWillDie();
+				TargetChr->IncreaseArmor(10);
+			}
+		}else
+		{
+			if(!(m_HelpTick % 50))
+				GameServer()->SendBroadcast_VL(_("Use hook to revive him"), m_pPlayer->GetCID());
+		}
+		m_HelpTick++;
+	}else m_HelpTick = 0;
 
 	if(GameServer()->m_pController->IsInfectionStarted() && IsHuman())
 	{
@@ -742,6 +760,11 @@ void CCharacter::Die(int Killer, int Weapon)
 	// this is for auto respawn after 3 secs
 	m_pPlayer->m_DieTick = Server()->Tick();
 	
+	if(GameServer()->m_pController->IsInfectionStarted())
+	{
+		m_pPlayer->StartInfection();
+	}
+
 	GameServer()->CountPlayer();
 
 	m_Alive = false;
@@ -1082,5 +1105,53 @@ void CCharacter::UpdateTuningParam()
 		pTuningParams->m_HookLength = 0.0f;
 	}
 	return;
+}
+
+int CCharacter::GetInfWeaponID(int WID)
+{
+	if(WID == WEAPON_HAMMER)
+	{
+		switch(GetRole())
+		{
+			default:
+				return XOLEWEAPON_HAMMER;
+		}
+	}
+	else if(WID == WEAPON_GUN)
+	{
+		switch(GetRole())
+		{
+			default:
+				return XOLEWEAPON_GUN;
+		}
+	}
+	else if(WID == WEAPON_SHOTGUN)
+	{
+		switch(GetRole())
+		{
+			default:
+				return XOLEWEAPON_SHOTGUN;
+		}
+	}
+	else if(WID == WEAPON_GRENADE)
+	{
+		switch(GetRole())
+		{
+			default:
+				return XOLEWEAPON_GRENADE;
+		}
+	}
+	else if(WID == WEAPON_RIFLE)
+	{
+		switch(GetRole())
+		{	
+			default:
+				return XOLEWEAPON_RIFLE;
+		}
+	}
+	else if(WID == WEAPON_NINJA)
+	{
+		return XOLEWEAPON_NINJA;
+	}
 }
 // XolePanic End
