@@ -275,7 +275,8 @@ void CServer::CClient::Reset()
 	m_LastInputTick = -1;
 	m_SnapRate = CClient::SNAPRATE_INIT;
 	m_Score = 0;
-	str_copy(m_aLanguage, "en", sizeof(m_aLanguage));
+	m_WasInfected = 0;
+	str_copy(m_aLanguage, g_Config.m_SvDefaultLanguage, sizeof(m_aLanguage));
 }
 
 const char* CServer::GetClientLanguage(int ClientID)
@@ -442,6 +443,7 @@ int CServer::Init()
 		m_aClients[i].m_CustClt = 0;
 		m_aClients[i].m_Country = -1;
 		m_aClients[i].m_Snapshots.Init();
+		m_aClients[i].m_WasInfected = 0;
 	}
 
 	m_CurrentGameTick = 0;
@@ -2030,3 +2032,19 @@ int main(int argc, const char **argv) // ignore_convention
 	delete pConfig;
 	return 0;
 }
+
+int CServer::IsClientInfectedBefore(int ClientID)
+{
+	return m_aClients[ClientID].m_WasInfected;
+}
+
+void CServer::InfectClient(int ClientID)
+{
+	m_aClients[ClientID].m_WasInfected = 1;
+}
+
+void CServer::UnInfectClient(int ClientID)
+{
+	m_aClients[ClientID].m_WasInfected = 0;
+}
+

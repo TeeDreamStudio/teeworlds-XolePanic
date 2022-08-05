@@ -11,6 +11,13 @@ class CGameControllerXole : public IGameController
 public:
 	CGameControllerXole(class CGameContext *pGameServer);
 	virtual void Tick();
-	// add more virtual functions here if you wish
+	virtual void DoWincheck();
+	virtual void OnCharacterSpawn(class CCharacter *pChr);
+	virtual void StartRound();
+
+	void GetFristInfectNum();
+	void RandomPlayerInfect();
+	bool m_IsDoInfection;
+	int m_FristInfectNum;
 };
 #endif

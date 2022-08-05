@@ -13,8 +13,8 @@
             "value": "可用语言: {str:ListOfLanguage}"
         },
         {
-            "key": "'{str:PlayerName}' entered and joined the {str:Team}",
-            "value": "'{str:PlayerName}' 进入服务器并加入 {str:Team}"
+            "key": "'{str:PlayerName}' entered and joined the game",
+            "value": "'{str:PlayerName}' 进入服务器并加入游戏"
         },
         {
             "key": "'{str:PlayerName}' has left the game ({str:Reason})",
@@ -153,16 +153,44 @@
             "value": "'{str:Player}' 加入了旁观"
         },
         {
-            "key": "'{str:Player}' joined the blueteam",
-            "value": "'{str:Player}' 加入了蓝队"
-        },
-        {
-            "key": "'{str:Player}' joined the redteam",
-            "value": "'{str:Player}' 加入了红队"
-        },
-        {
             "key": "'{str:Player}' joined the game",
             "value": "'{str:Player}' 加入了游戏"
+        },
+        {
+            "key": "=====RoleChooser=====",
+            "value": "=====角色选择器====="
+        },
+        {
+            "key": "Medic",
+            "value": "医疗兵"
+        },
+        {
+            "key": "Sniper",
+            "value": "狙击手"
+        },
+        {
+            "key": "Smoker",
+            "value": "吸烟者"
+        },
+        {
+            "key": "Hunter",
+            "value": "猎人"
+        },
+        {
+            "key": "Waring!!!Safe Zone has zombie!!!\nLife Time: {sec:Time}",
+            "value": "警告!!!安全区域存在僵尸!!!\n剩余时间: {sec:Time}"
+        },
+        {
+            "key": "{str:VictimName} has been infected",
+            "value": "{str:VictimName} 被感染了"
+        },
+        {
+            "key": "{int:Num} Humans win this round.",
+            "value": "{int:Num}名人类获得了这轮的胜利."
+        },
+        {
+            "key": "Zombies win this round in {sec:Second}.",
+            "value": "僵尸在{sec:Second}内获得了这轮的胜利."
         }
     ]
 }

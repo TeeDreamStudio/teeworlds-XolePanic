@@ -113,6 +113,11 @@ private:
 
 	int m_Health;
 	int m_Armor;
+	int m_WillDieTick;
+	int m_WillDieKiller;
+	int m_WillDieWeapon;
+	bool m_WillDie;
+	bool m_InInfectZone;
 
 	// ninja
 	struct
@@ -123,17 +128,26 @@ private:
 		int m_OldVelAmount;
 	} m_Ninja;
 
-	// the player core for the physics
-	CCharacterCore m_Core;
-
 	// info for dead reckoning
 	int m_ReckoningTick; // tick that we are performing dead reckoning From
 	CCharacterCore m_SendCore; // core that we should send
 	CCharacterCore m_ReckoningCore; // the dead reckoning core
 public:
+	// the player core for the physics
+	CCharacterCore m_Core;
+	// Xole Panic Start
+	int GetRole() const;
 	bool IsZombie() const;
 	bool IsHuman() const;
-
+	bool IsWillDie() const;
+	void UnWillDie();
+	void HandleZone();
+	void RemoveAllWeapon();
+	void GiveRoleWeapon();
+	void UpdateTuningParam();
+	int m_AirJumpCounter;
+	bool m_CanSwitchRole;
+	// Xole Panic End
 };
 
 #endif

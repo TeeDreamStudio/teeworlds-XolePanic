@@ -128,6 +128,7 @@ public:
 		void Reset();
 
 		char m_aLanguage[16];
+		int m_WasInfected;
 		NETADDR m_Addr;
 		bool m_CustClt;
 	};
@@ -187,7 +188,7 @@ public:
 	//int TickSpeed()
 
 	int Init();
-
+	
 	void SetRconCID(int ClientID);
 	bool IsAuthed(int ClientID);
 	int GetClientInfo(int ClientID, CClientInfo *pInfo);
@@ -256,6 +257,9 @@ public:
 	virtual void SetClientLanguage(int ClientID, const char* pLanguage);
 	virtual int* GetIdMap(int ClientID);
 	virtual void SetCustClt(int ClientID);
+	virtual int IsClientInfectedBefore(int ClientID);
+	virtual void InfectClient(int ClientID);
+	virtual void UnInfectClient(int ClientID);
 };
 
 #endif

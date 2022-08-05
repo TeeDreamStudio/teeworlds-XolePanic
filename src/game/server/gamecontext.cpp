@@ -9,9 +9,10 @@
 #include <game/version.h>
 #include <game/collision.h>
 #include <game/gamecore.h>
-#include "xole-panic/xole-panic.h"
-
+#include <string>
 #include <teeuniverses/components/localization.h>
+
+#include "xole-panic/xole-panic.h"
 
 enum
 {
@@ -34,6 +35,11 @@ void CGameContext::Construct(int Resetting)
 	m_NumVoteOptions = 0;
 	m_LockTeams = 0;
 	m_ChatResponseTargetID = -1;
+	m_HasZombieInSafeZone = false;
+	m_SafeZoneTick = 0;
+	m_NumHumans = 0;
+	m_NumZombies = 0;
+	m_NumPlayers = 0;
 
 	if(Resetting==NO_RESET)
 		m_pVoteOptionHeap = new CHeap();
@@ -469,7 +475,17 @@ void CGameContext::OnTick()
 	CheckPureTuning();
 
 	m_Collision.SetTime(m_pController->GetTime());
+	bool HadZombieInSafeZone = m_HasZombieInSafeZone;
+	m_HasZombieInSafeZone = false;
 
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(m_apPlayers[i] && m_apPlayers[i]->GetCharacter())
+		{
+			m_apPlayers[i]->GetCharacter()->m_Core.m_Infected = m_apPlayers[i]->IsZombie();
+		}
+	}
+	
 	// copy tuning
 	m_World.m_Core.m_Tuning = m_Tuning;
 	m_World.Tick();
@@ -484,6 +500,16 @@ void CGameContext::OnTick()
 			m_apPlayers[i]->Tick();
 			m_apPlayers[i]->PostTick();
 		}
+	}
+
+	if(m_HasZombieInSafeZone)
+	{
+		m_SafeZoneTick++;
+		SendWarning();
+	}else if(HadZombieInSafeZone && !m_HasZombieInSafeZone)
+	{
+		m_SafeZoneTick = 0;
+		SendBroadcast("", -1);
 	}
 
 	// update voting
@@ -595,14 +621,16 @@ void CGameContext::OnClientPredictedInput(int ClientID, void *pInput)
 void CGameContext::OnClientEnter(int ClientID)
 {
 	//world.insert_entity(&players[client_id]);
+	m_apPlayers[ClientID]->m_IsInGame = true;
+	m_apPlayers[ClientID]->SetRole(PLAYERROLE_MEDIC);
 	m_apPlayers[ClientID]->Respawn();
 	char aBuf[512];
 	str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientID), m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
-	SendChatTarget(-1, _("'{str:PlayerName}' entered and joined the {str:Team}"),"PlayerName", Server()->ClientName(ClientID), "Team", m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
+	SendChatTarget(-1, _("'{str:PlayerName}' entered and joined the game"),"PlayerName", Server()->ClientName(ClientID), NULL);
 
 	str_format(aBuf, sizeof(aBuf), "team_join player='%d:%s' team=%d", ClientID, Server()->ClientName(ClientID), m_apPlayers[ClientID]->GetTeam());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
-
+	CountPlayer();
 	m_VoteUpdate = true;
 }
 
@@ -651,6 +679,7 @@ void CGameContext::OnClientDrop(int ClientID, const char *pReason)
 		if(m_apPlayers[i] && m_apPlayers[i]->m_SpectatorID == ClientID)
 			m_apPlayers[i]->m_SpectatorID = SPEC_FREEVIEW;
 	}
+	CountPlayer();
 }
 
 void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
@@ -903,10 +932,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 		}
 		else if(MsgID == NETMSGTYPE_CL_VOTE)
 		{
-			if(!m_VoteCloseTime)
-				return;
+			CNetMsg_Cl_Vote *pMsg = (CNetMsg_Cl_Vote *)pRawMsg;
 
-			if(pPlayer->m_Vote == 0)
+			if(m_VoteCloseTime && pPlayer->m_Vote == 0)
 			{
 				CNetMsg_Cl_Vote *pMsg = (CNetMsg_Cl_Vote *)pRawMsg;
 				if(!pMsg->m_Vote)
@@ -915,6 +943,37 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				pPlayer->m_Vote = pMsg->m_Vote;
 				pPlayer->m_VotePos = ++m_VotePos;
 				m_VoteUpdate = true;
+			}else if(pPlayer->GetCharacter() && pPlayer->GetCharacter()->m_CanSwitchRole)
+			{
+				int Mask = CmaskAllExceptOne(pPlayer->GetCID());
+				int Start = (pPlayer->IsZombie() ? START_ZOMBIEROLE : START_HUMANROLE ) + 1;
+				int End = (pPlayer->IsZombie() ? END_ZOMBIEROLE : END_HUMANROLE ) - 1;
+				if(pMsg->m_Vote == 1)
+				{
+					if(pPlayer->GetRole() == Start)
+					{
+						pPlayer->SetRole(End);
+						SendRoleChooser(pPlayer->GetCID());
+					}
+					else
+					{
+						pPlayer->SetRole(pPlayer->GetRole()-1);
+						SendRoleChooser(pPlayer->GetCID());
+					}
+				}else if(pMsg->m_Vote == -1)
+				{
+					if(pPlayer->GetRole() == End)
+					{
+						pPlayer->SetRole(Start);
+						SendRoleChooser(pPlayer->GetCID());
+					}
+					else
+					{
+						pPlayer->SetRole(pPlayer->GetRole()+1);
+						SendRoleChooser(pPlayer->GetCID());
+					}
+				}
+				CreateSound(pPlayer->GetCharacter()->m_Pos, SOUND_WEAPON_SWITCH, Mask);
 			}
 		}
 		else if (MsgID == NETMSGTYPE_CL_SETTEAM && !m_World.m_Paused)
@@ -1757,20 +1816,11 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 				vec2 P3((x+1)*32.0f, (y+1)*32.0f);
 				switch(Index - ENTITY_OFFSET)
 				{
-					case ENTITY_SPAWN:
-						m_pController->OnEntity("spawn", Pivot, P0, P1, P2, P3, -1);
-						break;
 					case ENTITY_SPAWN_HUMAN:
 						m_pController->OnEntity("humanSpawn", Pivot, P0, P1, P2, P3, -1);
 						break;
 					case ENTITY_SPAWN_ZOMBIE:
 						m_pController->OnEntity("zombieSpawn", Pivot, P0, P1, P2, P3, -1);
-						break;
-					case ENTITY_FLAGSTAND_RED:
-						m_pController->OnEntity("redFlag", Pivot, P0, P1, P2, P3, -1);
-						break;
-					case ENTITY_FLAGSTAND_BLUE:
-						m_pController->OnEntity("buleFlag", Pivot, P0, P1, P2, P3, -1);
 						break;
 				}
 			}
@@ -1872,3 +1922,111 @@ const char *CGameContext::Version() { return GAME_VERSION; }
 const char *CGameContext::NetVersion() { return GAME_NETVERSION; }
 
 IGameServer *CreateGameServer() { return new CGameContext; }
+
+
+
+const char *CGameContext::GetRoleName(int Role)
+{
+	switch (Role)
+	{
+		//Human
+		case PLAYERROLE_MEDIC: return "Medic"; break;
+		case PLAYERROLE_SNIPER: return "Sniper"; break;
+		//zombie
+		case PLAYERROLE_SMOKER: return "Smoker"; break;
+		case PLAYERROLE_HUNTER: return "Hunter"; break;
+
+		default: return "????"; break;
+	}
+}
+
+void CGameContext::SendRoleChooser(int To)
+{
+	std::string Buffer;
+	CPlayer *pPlayer = m_apPlayers[To];
+
+	if(!pPlayer)
+	{
+		return;
+	}
+
+	const char *pLanguageCode = pPlayer->GetLanguage();
+
+	Buffer.append(Server()->Localization()->Localize(pLanguageCode, "=====RoleChooser====="));
+	Buffer.append("\n");
+
+	if(pPlayer->IsZombie())
+	{
+		for(int i = START_ZOMBIEROLE + 1; i < END_ZOMBIEROLE; i++)
+		{
+			if(pPlayer->GetRole() == i)
+			{
+				Buffer.append("[ ");
+				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
+				Buffer.append(" ]");
+			}else
+			{
+				Buffer.append("   ");
+				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
+				Buffer.append("   ");
+			}
+			Buffer.append("\n");
+		}
+
+	}else
+	{
+		for(int i = START_HUMANROLE + 1; i < END_HUMANROLE; i++)
+		{
+			if(pPlayer->GetRole() == i)
+			{
+				Buffer.append("[ ");
+				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
+				Buffer.append(" ]");
+			}else
+			{
+				Buffer.append("   ");
+				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
+				Buffer.append("   ");
+			}
+			Buffer.append("\n");
+		}
+	}
+	SendMotd(To, Buffer.c_str());
+}
+
+void CGameContext::CountPlayer()
+{
+	m_NumHumans = 0;
+	m_NumZombies = 0;
+	m_NumPlayers = 0;
+	
+	for(int i = 0;i < MAX_CLIENTS; i ++)
+	{
+		if(m_apPlayers[i])
+		{
+			if(m_apPlayers[i]->GetTeam() == TEAM_SPECTATORS && !m_apPlayers[i]->m_IsInGame)
+				return;
+			if(m_apPlayers[i]->IsHuman())
+				m_NumHumans++;
+			else 
+				m_NumZombies++;
+			m_NumPlayers++;
+		}
+	}
+}
+
+void CGameContext::SendWarning()
+{
+	int Second = ((250 - m_SafeZoneTick) / 50);
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(m_apPlayers[i])
+		{
+			if(m_apPlayers[i]->IsHuman())
+			{
+				SendBroadcast_VL(_("Waring!!!Safe Zone has zombie!!!\nLife Time: {sec:Time}"), i, "Time", &Second, NULL);
+			}
+		}
+	}
+	return;
+}

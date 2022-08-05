@@ -29,6 +29,7 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 
 	m_PrevTuningParams = *pGameServer->Tuning();
 	m_NextTuningParams = m_PrevTuningParams;
+	m_IsInGame = false;
 
 	int* idMap = Server()->GetIdMap(ClientID);
 	for (int i = 1;i < VANILLA_MAX_CLIENTS;i++)
@@ -372,10 +373,64 @@ void CPlayer::SetLanguage(const char* pLanguage)
 
 bool CPlayer::IsZombie() const
 {
-	return (m_Role > START_ZOMBIEROLE);
+	return (m_Role > END_HUMANROLE);
 }
 
 bool CPlayer::IsHuman() const
 {
-	return !(m_Role > START_ZOMBIEROLE);
+	return !(m_Role > END_HUMANROLE);
+}
+
+int CPlayer::GetRole() const
+{
+	return m_Role;
+}
+
+void CPlayer::SetRole(int Role)
+{
+	m_Role = Role;
+	SetRoleSkin(Role);
+	GameServer()->CountPlayer();
+	if(m_pCharacter)
+	{
+		if(m_pCharacter->m_CanSwitchRole)
+			GameServer()->SendRoleChooser(m_ClientID);
+		m_pCharacter->GiveRoleWeapon();
+	}
+}
+
+void CPlayer::StartInfection()
+{
+	if(m_pCharacter)
+	{
+		GameServer()->CreatePlayerSpawn(m_pCharacter->m_Pos);
+	}
+	SetRole(random_int(START_ZOMBIEROLE+1, END_ZOMBIEROLE-1));
+}
+
+void CPlayer::SetRoleSkin(int Role)
+{
+	switch (Role)
+	{
+		case PLAYERROLE_MEDIC:
+			m_TeeInfos.m_UseCustomColor = 0;
+			str_copy(m_TeeInfos.m_SkinName, "twinbop", sizeof(m_TeeInfos.m_SkinName));
+			break;
+		case PLAYERROLE_SNIPER:
+			m_TeeInfos.m_UseCustomColor = 0;
+			str_copy(m_TeeInfos.m_SkinName, "coala", sizeof(m_TeeInfos.m_SkinName));
+			break;
+		case PLAYERROLE_SMOKER:
+			m_TeeInfos.m_UseCustomColor = 1;
+			str_copy(m_TeeInfos.m_SkinName, "cammostripes", sizeof(m_TeeInfos.m_SkinName));
+			m_TeeInfos.m_ColorBody = 0;
+			m_TeeInfos.m_ColorFeet = 0;
+			break;
+		case PLAYERROLE_HUNTER:
+			m_TeeInfos.m_UseCustomColor = 1;
+			str_copy(m_TeeInfos.m_SkinName, "warpaint", sizeof(m_TeeInfos.m_SkinName));
+			m_TeeInfos.m_ColorBody = 0;
+			m_TeeInfos.m_ColorFeet = 0;
+			break;
+	}
 }

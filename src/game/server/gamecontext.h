@@ -204,6 +204,17 @@ public:
 	virtual const char *GameType();
 	virtual const char *Version();
 	virtual const char *NetVersion();
+	// XolePanic Start
+	const char *GetRoleName(int Role);
+	void SendRoleChooser(int To);
+	void CountPlayer();
+	void SendWarning();
+	bool m_HasZombieInSafeZone;
+	int m_SafeZoneTick;
+	int m_NumPlayers;
+	int m_NumZombies;
+	int m_NumHumans;
+	// XolePanic End
 };
 
 inline int64_t CmaskAll() { return -1LL; }

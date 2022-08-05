@@ -60,6 +60,13 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_ActiveWeapon = WEAPON_GUN;
 	m_LastWeapon = WEAPON_HAMMER;
 	m_QueuedWeapon = -1;
+	m_AirJumpCounter = 0;
+	m_WillDieTick = 0;
+	m_WillDieKiller = -1;
+	m_WillDieWeapon = -1;
+	m_WillDie = false;
+	m_InInfectZone = false;
+	m_CanSwitchRole = true;
 
 	m_pPlayer = pPlayer;
 	m_Pos = Pos;
@@ -77,6 +84,8 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_Alive = true;
 
 	GameServer()->m_pController->OnCharacterSpawn(this);
+
+	GiveRoleWeapon();
 
 	return true;
 }
@@ -203,6 +212,10 @@ void CCharacter::DoWeaponSwitch()
 
 void CCharacter::HandleWeaponSwitch()
 {
+	if(m_WillDie)
+	{
+		return;
+	}
 	int WantedWeapon = m_ActiveWeapon;
 	if(m_QueuedWeapon != -1)
 		WantedWeapon = m_QueuedWeapon;
@@ -244,6 +257,11 @@ void CCharacter::HandleWeaponSwitch()
 
 void CCharacter::FireWeapon()
 {
+	if(m_WillDie)
+	{
+		return;
+	}
+
 	if(m_ReloadTimer != 0)
 		return;
 
@@ -297,6 +315,11 @@ void CCharacter::FireWeapon()
 			for (int i = 0; i < Num; ++i)
 			{
 				CCharacter *pTarget = apEnts[i];
+
+				if(pTarget->IsHuman() && IsHuman() && pTarget->IsWillDie())
+				{
+					pTarget->UnWillDie();
+				}
 
 				if ((pTarget == this) || GameServer()->Collision()->IntersectLine(ProjStartPos, pTarget->m_Pos, NULL, NULL))
 					continue;
@@ -442,6 +465,11 @@ void CCharacter::HandleWeapons()
 
 bool CCharacter::GiveWeapon(int Weapon, int Ammo)
 {
+	if(Ammo < 0 && Weapon != WEAPON_HAMMER)
+	{
+		Ammo = 10;
+	}
+
 	if(m_aWeapons[Weapon].m_Ammo < g_pData->m_Weapons.m_aId[Weapon].m_Maxammo || !m_aWeapons[Weapon].m_Got)
 	{
 		m_aWeapons[Weapon].m_Got = true;
@@ -525,32 +553,51 @@ void CCharacter::Tick()
 		m_pPlayer->m_ForceBalanced = false;
 	}
 
+	if(m_WillDie)
+	{
+		if(m_WillDieTick)
+		{
+			int Second = m_WillDieTick / 50;
+			m_WillDieTick--;
+			if(!(m_WillDieTick % 50))
+			{
+				GameServer()->CreateSound(m_Pos, SOUND_PLAYER_PAIN_LONG);
+			}
+			m_Input.m_Jump = 0;
+			m_Input.m_Direction = 0;
+			m_Input.m_Hook = 0;
+			GameServer()->SendBroadcast_VL(_("You will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
+		}else
+		{
+			m_pPlayer->StartInfection();
+			Die(m_WillDieKiller, m_WillDieWeapon);
+		}
+	}
+
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true, m_pPlayer->GetNextTuningParams());
 
-	// handle death-tiles and leaving gamelayer
-	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
-		GameLayerClipped(m_Pos))
+	if(GameServer()->m_pController->IsInfectionStarted() && IsHuman())
 	{
-		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
+		m_CanSwitchRole = false;
 	}
-
-	// handle death-zones
-	if(GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f) == TILE_DEATH ||
-		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f) == TILE_DEATH ||
-		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f) == TILE_DEATH ||
-		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f) == TILE_DEATH ||
-		GameLayerClipped(m_Pos))
-	{
-		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
-	}
+	// handle Zones
+	HandleZone();
 
 	// handle Weapons
 	HandleWeapons();
 
+	if(GetRole() == PLAYERROLE_HUNTER || GetRole() == PLAYERROLE_SNIPER)
+	{
+		if(IsGrounded()) m_AirJumpCounter = 0;
+		if(m_Core.m_TriggeredEvents&COREEVENT_AIR_JUMP && m_AirJumpCounter < 1)
+		{
+			m_Core.m_Jumped &= ~2;
+			m_AirJumpCounter++;
+		}
+	}
+
+	UpdateTuningParam();
 	// Previnput
 	m_PrevInput = m_Input;
 	return;
@@ -694,6 +741,8 @@ void CCharacter::Die(int Killer, int Weapon)
 
 	// this is for auto respawn after 3 secs
 	m_pPlayer->m_DieTick = Server()->Tick();
+	
+	GameServer()->CountPlayer();
 
 	m_Alive = false;
 	GameServer()->m_World.RemoveEntity(this);
@@ -703,14 +752,33 @@ void CCharacter::Die(int Killer, int Weapon)
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
+	if(m_WillDie)
+	{
+		return false;
+	}
 	m_Core.m_Vel += Force;
 
 	if(GameServer()->m_pController->IsFriendlyFire(m_pPlayer->GetCID(), From) && !g_Config.m_SvTeamdamage)
 		return false;
 
-	// m_pPlayer only inflicts half damage on self
+	CPlayer *pFrom = GameServer()->m_apPlayers[From];
+
+	// m_pPlayer only inflicts no damage on self
 	if(From == m_pPlayer->GetCID())
-		Dmg = max(1, Dmg/2);
+		Dmg = 0;
+	if(pFrom->IsZombie())
+	{
+		m_WillDie = true;
+		m_WillDieTick = g_Config.m_XoleWillDieSec * 50;
+		m_WillDieKiller = From;
+		m_WillDieWeapon = Weapon;
+		return false;
+	}
+
+	if(m_pPlayer->IsHuman() == pFrom->IsHuman())
+	{
+		return false;
+	}
 
 	m_DamageTaken++;
 
@@ -835,8 +903,12 @@ void CCharacter::Snap(int SnappingClient)
 		if (!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
 			pCharacter->m_HookedPlayer = -1;
 	}
-
-	pCharacter->m_Emote = m_EmoteType;
+	if(m_WillDie)
+	{
+		pCharacter->m_Emote = EMOTE_PAIN;
+	}
+	else if(IsZombie()) pCharacter->m_Emote = EMOTE_ANGRY;
+	else pCharacter->m_Emote = m_EmoteType;
 
 	pCharacter->m_AmmoCount = 0;
 	pCharacter->m_Health = 0;
@@ -865,6 +937,11 @@ void CCharacter::Snap(int SnappingClient)
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
 }
 // XolePanic Start
+int CCharacter::GetRole() const
+{
+	return m_pPlayer->GetRole();
+}
+
 bool CCharacter::IsZombie() const
 {
 	return m_pPlayer->IsZombie();
@@ -873,5 +950,137 @@ bool CCharacter::IsZombie() const
 bool CCharacter::IsHuman() const
 {
 	return m_pPlayer->IsHuman();
+}
+
+bool CCharacter::IsWillDie() const
+{
+	return m_WillDie;
+}
+
+void CCharacter::UnWillDie()
+{
+	m_WillDie = false;
+	m_WillDieTick = 0;
+}
+
+void CCharacter::RemoveAllWeapon()
+{
+	for(int i = WEAPON_HAMMER+1;i < NUM_WEAPONS;i++)
+	{
+		m_aWeapons[i].m_Got = false;
+		m_aWeapons[i].m_Ammo = 0;
+	}
+}
+
+void CCharacter::GiveRoleWeapon()
+{
+	switch (GetRole())
+	{
+		case PLAYERROLE_MEDIC:
+			RemoveAllWeapon();
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			GiveWeapon(WEAPON_GUN, 10);
+			GiveWeapon(WEAPON_SHOTGUN, 5);
+			m_ActiveWeapon = WEAPON_SHOTGUN;
+			break;
+		case PLAYERROLE_SNIPER:
+			RemoveAllWeapon();
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			GiveWeapon(WEAPON_GUN, 10);
+			GiveWeapon(WEAPON_RIFLE, 5);
+			m_ActiveWeapon = WEAPON_RIFLE;
+			break;
+		
+		case PLAYERROLE_SMOKER:
+			RemoveAllWeapon();
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			m_ActiveWeapon = WEAPON_HAMMER;
+			break;
+
+		default:
+			RemoveAllWeapon();
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			m_ActiveWeapon = WEAPON_HAMMER;
+			break;
+	}
+	GameServer()->SendBroadcast_VL(_(GameServer()->GetRoleName(GetRole())), m_pPlayer->GetCID());
+}
+
+void CCharacter::HandleZone()
+{
+	// handle death-tiles and leaving gamelayer
+	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_DEATH ||
+		GameLayerClipped(m_Pos))
+	{
+		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
+	}
+
+	// handle death-zones
+	if(GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f) == TILE_DEATH ||
+		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f) == TILE_DEATH ||
+		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f) == TILE_DEATH ||
+		GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_TeeWorlds, m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f) == TILE_DEATH ||
+		GameLayerClipped(m_Pos))
+	{
+		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
+	}
+
+	// handle safe zone
+	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE)
+	{
+		if(!(GameServer()->m_HasZombieInSafeZone) && IsZombie())
+		{
+			GameServer()->m_HasZombieInSafeZone = true;
+		}
+	}
+	// handle infect zone
+	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE)
+	{
+		if(IsHuman())
+		{
+			m_pPlayer->StartInfection();
+		}
+		m_InInfectZone = true;
+		m_CanSwitchRole = true;
+	}else 
+	{
+		if(IsZombie())
+		{
+			m_CanSwitchRole = false;
+		}
+		m_InInfectZone = false;
+	}
+}
+
+void CCharacter::UpdateTuningParam()
+{
+	CTuningParams* pTuningParams = &m_pPlayer->m_NextTuningParams;
+
+	if(m_WillDie)
+	{
+		pTuningParams->m_GroundControlAccel = 0.0f;
+		pTuningParams->m_GroundJumpImpulse = 0.0f;
+		pTuningParams->m_AirJumpImpulse = 0.0f;
+		pTuningParams->m_AirControlAccel = 0.0f;
+		pTuningParams->m_HookLength = 0.0f;
+	}
+	return;
 }
 // XolePanic End

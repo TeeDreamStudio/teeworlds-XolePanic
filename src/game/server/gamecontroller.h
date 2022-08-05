@@ -155,6 +155,8 @@ public:
 	virtual void PostReset();
 
 	double GetTime();
+
+	bool IsInfectionStarted();
 };
 
 #endif

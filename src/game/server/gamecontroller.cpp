@@ -5,7 +5,6 @@
 
 #include <game/generated/protocol.h>
 
-#include "entities/pickup.h"
 #include "gamecontroller.h"
 #include "gamecontext.h"
 
@@ -17,7 +16,6 @@ IGameController::IGameController(class CGameContext *pGameServer)
 	m_pGameType = "unknown";
 
 	//
-	DoWarmup(g_Config.m_SvWarmup);
 	m_UnpauseTimer = 0;
 	m_GameOverTick = -1;
 	m_SuddenDeath = 0;
@@ -99,9 +97,9 @@ bool IGameController::CanSpawn(int Team, bool IsZombie, vec2 *pOutPos)
 	// spectators can't spawn
 	if(Team == TEAM_SPECTATORS)
 		return false;
-	if(!IsZombie)
+	if(!IsZombie && !IsInfectionStarted())
 		EvaluateSpawnType(&Eval, 0);
-	else if(IsZombie)
+	else
 		EvaluateSpawnType(&Eval, 1);
 
 	*pOutPos = Eval.m_Pos;
@@ -120,21 +118,11 @@ bool IGameController::OnEntity(const char* pName, vec2 Pivot, vec2 P0, vec2 P1, 
 	else if(str_comp(pName, "zombieSpawn") == 0)
 		m_aaSpawnPoints[1][m_aNumSpawnPoints[1]++] = Pos;
 
-	if(Type != -1)
-	{
-		CPickup *pPickup = new CPickup(&GameServer()->m_World, Type, SubType, Pivot, Pos - Pivot, PosEnv);
-		pPickup->m_Pos = Pos;
-		return true;
-	}
-
 	return false;
 }
 
 void IGameController::EndRound()
 {
-	if(m_Warmup) // game can't end when we are running warmup
-		return;
-
 	GameServer()->m_World.m_Paused = true;
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
@@ -180,6 +168,22 @@ void IGameController::StartRound()
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags&GAMEFLAG_TEAMS);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
+
+	for(int i=0;i < MAX_CLIENTS;i ++)
+	{
+		CPlayer *pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer)
+		{
+			if(pPlayer->GetCharacter())
+			{
+				pPlayer->GetCharacter()->m_CanSwitchRole = true;
+			}
+			pPlayer->SetRole(PLAYERROLE_MEDIC);
+			pPlayer->m_Score = 0;
+		}
+	}
+
+	GameServer()->CountPlayer();
 }
 
 void IGameController::ChangeMap(const char *pToMap)
@@ -319,12 +323,6 @@ int IGameController::OnCharacterDeath(class CCharacter *pVictim, class CPlayer *
 
 void IGameController::OnCharacterSpawn(class CCharacter *pChr)
 {
-	// default health
-	pChr->IncreaseHealth(10);
-
-	// give default weapons
-	pChr->GiveWeapon(WEAPON_HAMMER, -1);
-	pChr->GiveWeapon(WEAPON_GUN, 10);
 }
 
 void IGameController::DoWarmup(int Seconds)
@@ -405,7 +403,7 @@ void IGameController::Tick()
 	if(m_GameOverTick != -1)
 	{
 		// game over.. wait for restart
-		if(Server()->Tick() > m_GameOverTick+Server()->TickSpeed()*10)
+		if(Server()->Tick() > m_GameOverTick+Server()->TickSpeed()*3)
 		{
 			CycleMap();
 			StartRound();
@@ -525,8 +523,6 @@ void IGameController::Tick()
 			}
 		}
 	}
-
-	DoWincheck();
 }
 
 
@@ -667,50 +663,6 @@ bool IGameController::CanChangeTeam(CPlayer *pPlayer, int JoinTeam)
 
 void IGameController::DoWincheck()
 {
-	if(m_GameOverTick == -1 && !m_Warmup && !GameServer()->m_World.m_ResetRequested)
-	{
-		if(IsTeamplay())
-		{
-			// check score win condition
-			if((g_Config.m_SvScorelimit > 0 && (m_aTeamscore[TEAM_RED] >= g_Config.m_SvScorelimit || m_aTeamscore[TEAM_BLUE] >= g_Config.m_SvScorelimit)) ||
-				(g_Config.m_SvTimelimit > 0 && (Server()->Tick()-m_RoundStartTick) >= g_Config.m_SvTimelimit*Server()->TickSpeed()*60))
-			{
-				if(m_aTeamscore[TEAM_RED] != m_aTeamscore[TEAM_BLUE])
-					EndRound();
-				else
-					m_SuddenDeath = 1;
-			}
-		}
-		else
-		{
-			// gather some stats
-			int Topscore = 0;
-			int TopscoreCount = 0;
-			for(int i = 0; i < MAX_CLIENTS; i++)
-			{
-				if(GameServer()->m_apPlayers[i])
-				{
-					if(GameServer()->m_apPlayers[i]->m_Score > Topscore)
-					{
-						Topscore = GameServer()->m_apPlayers[i]->m_Score;
-						TopscoreCount = 1;
-					}
-					else if(GameServer()->m_apPlayers[i]->m_Score == Topscore)
-						TopscoreCount++;
-				}
-			}
-
-			// check score win condition
-			if((g_Config.m_SvScorelimit > 0 && Topscore >= g_Config.m_SvScorelimit) ||
-				(g_Config.m_SvTimelimit > 0 && (Server()->Tick()-m_RoundStartTick) >= g_Config.m_SvTimelimit*Server()->TickSpeed()*60))
-			{
-				if(TopscoreCount == 1)
-					EndRound();
-				else
-					m_SuddenDeath = 1;
-			}
-		}
-	}
 }
 
 int IGameController::ClampTeam(int Team)
@@ -725,4 +677,9 @@ int IGameController::ClampTeam(int Team)
 double IGameController::GetTime()
 {
 	return static_cast<double>(Server()->Tick() - m_RoundStartTick)/Server()->TickSpeed();
+}
+
+bool IGameController::IsInfectionStarted()
+{
+	return (Server()->Tick() - m_RoundStartTick) >= (Server()->TickSpeed() * g_Config.m_XoleInfectStartSec);
 }

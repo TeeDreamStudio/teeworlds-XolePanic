@@ -314,10 +314,12 @@ void CCharacterCore::Tick(bool UseInput, const CTuningParams* pTuningParams)
 			if(pCharCore == this) // || !(p->flags&FLAG_ALIVE)
 				continue; // make sure that we don't nudge our self
 
+			if (m_Infected == pCharCore->m_Infected)
+				continue;
 			// handle player <-> player collision
 			float Distance = distance(m_Pos, pCharCore->m_Pos);
 			vec2 Dir = normalize(m_Pos - pCharCore->m_Pos);
-			if(pTuningParams->m_PlayerCollision && Distance < PhysSize*1.25f && Distance > 0.0f)
+			if(!pTuningParams->m_PlayerCollision && Distance < PhysSize*1.25f && Distance > 0.0f)
 			{
 				float a = (PhysSize*1.45f - Distance);
 				float Velocity = 0.5f;
