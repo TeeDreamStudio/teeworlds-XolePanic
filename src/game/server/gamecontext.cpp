@@ -631,6 +631,11 @@ void CGameContext::OnClientEnter(int ClientID)
 	str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientID), m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
 	SendChatTarget(-1, _("'{str:PlayerName}' entered and joined the game"),"PlayerName", Server()->ClientName(ClientID), NULL);
 
+	SendChatTarget(ClientID, "-----------XolePanic--------");
+	SendChatTarget(ClientID, _("XolePanic {str:Version} by ErrorDreemurr"), "Version", MOD_VERSION, NULL);
+	SendChatTarget(ClientID, _("Zombie's goal is attack safe zone 5 secs"), NULL);
+	SendChatTarget(ClientID, _("Humans's goal is protect safe zone"), NULL);
+
 	str_format(aBuf, sizeof(aBuf), "team_join player='%d:%s' team=%d", ClientID, Server()->ClientName(ClientID), m_apPlayers[ClientID]->GetTeam());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 	CountPlayer();
@@ -1065,10 +1070,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			}
 			Server()->SetClientClan(ClientID, pMsg->m_pClan);
 			Server()->SetClientCountry(ClientID, pMsg->m_Country);
-			str_copy(pPlayer->m_TeeInfos.m_SkinName, pMsg->m_pSkin, sizeof(pPlayer->m_TeeInfos.m_SkinName));
-			pPlayer->m_TeeInfos.m_UseCustomColor = pMsg->m_UseCustomColor;
-			pPlayer->m_TeeInfos.m_ColorBody = pMsg->m_ColorBody;
-			pPlayer->m_TeeInfos.m_ColorFeet = pMsg->m_ColorFeet;
 			m_pController->OnPlayerInfoChange(pPlayer);
 		}
 		else if (MsgID == NETMSGTYPE_CL_EMOTICON && !m_World.m_Paused)
@@ -1612,25 +1613,11 @@ void CGameContext::ConAbout(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext* pThis = (CGameContext*) pUserData;
 	
-	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "%s %s by %s", MOD_NAME, MOD_VERSION, MOD_AUTHORS);
-	pThis->Console()->Print(IConsole::OUTPUT_LEVEL_CHAT, "chat", aBuf);
-	
-	if(MOD_CREDITS[0])
-	{
-		str_format(aBuf, sizeof(aBuf), "Credits: %s", MOD_CREDITS);
-		pThis->Console()->Print(IConsole::OUTPUT_LEVEL_CHAT, "chat", aBuf);
-	}
-	if(MOD_THANKS[0])
-	{
-		str_format(aBuf, sizeof(aBuf), "Thanks to: %s", MOD_THANKS);
-		pThis->Console()->Print(IConsole::OUTPUT_LEVEL_CHAT, "chat", aBuf);
-	}
-	if(MOD_SOURCES[0])
-	{
-		str_format(aBuf, sizeof(aBuf), "Sources: %s", MOD_SOURCES);
-		pThis->Console()->Print(IConsole::OUTPUT_LEVEL_CHAT, "chat", aBuf);
-	}
+	pThis->SendChatTarget(-1, "-----------XolePanic--------");
+	pThis->SendChatTarget(-1, _("XolePanic {str:Version} by ErrorDreemurr"), "Version", MOD_VERSION, NULL);
+	pThis->SendChatTarget(-1, _("Zombie's goal is attack safe zone 5 secs"), NULL);
+	pThis->SendChatTarget(-1, _("Humans's goal is protect safe zone"), NULL);
+	return;
 }
 
 void CGameContext::ConLanguage(IConsole::IResult *pResult, void *pUserData)

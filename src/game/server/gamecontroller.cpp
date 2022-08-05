@@ -123,6 +123,9 @@ bool IGameController::OnEntity(const char* pName, vec2 Pivot, vec2 P0, vec2 P1, 
 
 void IGameController::EndRound()
 {
+	if(m_Warmup)
+		return;
+
 	GameServer()->m_World.m_Paused = true;
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
@@ -393,7 +396,7 @@ bool IGameController::CanBeMovedOnBalance(int ClientID)
 void IGameController::Tick()
 {
 	// do warmup
-	if(!GameServer()->m_World.m_Paused && m_Warmup)
+	if(m_Warmup)
 	{
 		m_Warmup--;
 		if(!m_Warmup)
@@ -546,7 +549,7 @@ void IGameController::Snap(int SnappingClient)
 	if(GameServer()->m_World.m_Paused)
 		pGameInfoObj->m_GameStateFlags |= GAMESTATEFLAG_PAUSED;
 	pGameInfoObj->m_RoundStartTick = m_RoundStartTick;
-	pGameInfoObj->m_WarmupTimer = GameServer()->m_World.m_Paused ? m_UnpauseTimer : m_Warmup;
+	pGameInfoObj->m_WarmupTimer = m_Warmup;
 
 	pGameInfoObj->m_ScoreLimit = g_Config.m_SvScorelimit;
 	pGameInfoObj->m_TimeLimit = g_Config.m_SvTimelimit;

@@ -16,11 +16,6 @@
 #define GAME_NETVERSION "0.6 626fce9a778df4d4" //the std game version
 static const char GAME_RELEASE_VERSION[8] = {'0', '.', '6', '.', '4', 0};
 
-#define MOD_NAME "XolePanic"
 #define MOD_VERSION "0.1"
-#define MOD_AUTHORS "ErrorDreemurr"
-#define MOD_CREDITS "ErrorDreemurr"
-#define MOD_THANKS "FlowerFell-Sans"
-#define MOD_SOURCES "ErrorDreemurr"
 #endif
 #endif

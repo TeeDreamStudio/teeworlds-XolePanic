@@ -157,6 +157,18 @@
             "value": "'{str:Player}' 加入了游戏"
         },
         {
+            "key": "XolePanic {str:Version} by ErrorDreemurr",
+            "value": "感染恐慌 {str:Version} 由ErrorDreemurr制作"
+        },
+        {
+            "key": "Zombie's goal is attack safe zone 5 secs",
+            "value": "僵尸的目标是攻击安全区5秒."
+        },
+        {
+            "key": "Humans's goal is protect safe zone",
+            "value": "人类的目标是保护安全区"
+        },
+        {
             "key": "=====RoleChooser=====",
             "value": "=====角色选择器====="
         },

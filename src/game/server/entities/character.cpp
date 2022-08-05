@@ -577,10 +577,10 @@ void CCharacter::Tick()
 	m_Core.Tick(true, m_pPlayer->GetNextTuningParams());
 
 	vec2 HelpPos;
-	CCharacter *TargetChr = GameServer()->m_World.IntersectCharacter(m_Pos, m_Pos, 6.0f, HelpPos, this);
+	CCharacter *TargetChr = GameServer()->m_World.IntersectCharacter(m_Pos, m_Pos, 32.0f, HelpPos, this);
 	if(TargetChr && TargetChr->IsWillDie())
 	{
-		if(m_Input.m_Hook)
+		if(m_Input.m_Hook != 0)
 		{
 			if(TargetChr)
 			{
@@ -789,17 +789,18 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 	// m_pPlayer only inflicts no damage on self
 	if(From == m_pPlayer->GetCID())
 		Dmg = 0;
+
+	if(m_pPlayer->IsHuman() == pFrom->IsHuman())
+	{
+		return false;
+	}
+
 	if(pFrom->IsZombie())
 	{
 		m_WillDie = true;
 		m_WillDieTick = g_Config.m_XoleWillDieSec * 50;
 		m_WillDieKiller = From;
 		m_WillDieWeapon = Weapon;
-		return false;
-	}
-
-	if(m_pPlayer->IsHuman() == pFrom->IsHuman())
-	{
 		return false;
 	}
 

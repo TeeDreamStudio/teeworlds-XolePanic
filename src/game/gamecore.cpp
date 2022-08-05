@@ -213,7 +213,7 @@ void CCharacterCore::Tick(bool UseInput, const CTuningParams* pTuningParams)
 			for(int i = 0; i < MAX_CLIENTS; i++)
 			{
 				CCharacterCore *pCharCore = m_pWorld->m_apCharacters[i];
-				if(!pCharCore || pCharCore == this)
+				if(!pCharCore || pCharCore == this || pCharCore->m_Infected == m_Infected)
 					continue;
 
 				vec2 ClosestPoint = closest_point_on_line(m_HookPos, NewPos, pCharCore->m_Pos);
