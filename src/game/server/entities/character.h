@@ -116,6 +116,7 @@ private:
 	int m_WillDieTick;
 	int m_WillDieKiller;
 	int m_WillDieWeapon;
+	int m_LastReviveTick;
 	bool m_WillDie;
 	bool m_InInfectZone;
 

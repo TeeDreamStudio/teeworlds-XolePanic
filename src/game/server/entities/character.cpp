@@ -64,6 +64,7 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_WillDieTick = 0;
 	m_WillDieKiller = -1;
 	m_WillDieWeapon = -1;
+	m_LastReviveTick = 0;
 	m_HelpTick = 0;
 	m_WillDie = false;
 	m_InInfectZone = false;
@@ -816,10 +817,18 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 
 	if(pFrom->IsZombie())
 	{
-		m_WillDie = true;
-		m_WillDieTick = g_Config.m_XoleWillDieSec * 50;
-		m_WillDieKiller = From;
-		m_WillDieWeapon = Weapon;
+		if(((Server()->Tick() - m_LastReviveTick) / 50) >= g_Config.m_XoleReviverCDSec)
+		{
+			m_WillDie = true;
+			m_WillDieTick = g_Config.m_XoleWillDieSec * 50;
+			m_WillDieKiller = From;
+			m_WillDieWeapon = Weapon;
+		}
+		else
+		{
+			m_pPlayer->StartInfection();
+			Die(From, Weapon);
+		}
 		return false;
 	}
 

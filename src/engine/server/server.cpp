@@ -1524,6 +1524,11 @@ int CServer::LoadMap(const char *pMapName)
 		io_read(File, m_pCurrentMapData, m_CurrentMapSize);
 		io_close(File);
 	}
+
+	{
+		str_format(aBuf, sizeof(aBuf), "maps/%s.cfg", pMapName);
+		Console()->ExecuteFile(aBuf);
+	}
 	return 1;
 }
 
