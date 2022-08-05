@@ -30,7 +30,10 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 	m_From = From;
 	m_Pos = At;
 	m_Energy = -1;
-	pHit->TakeDamage(vec2(0.f, 0.f), GameServer()->Tuning()->m_LaserDamage, m_Owner, WEAPON_RIFLE);
+	int Damage = GameServer()->Tuning()->m_LaserDamage;
+	if(pOwnerChar->GetRole() == PLAYERROLE_SNIPER)
+		Damage = 13;
+	pHit->TakeDamage(vec2(0.f, 0.f), Damage, m_Owner, WEAPON_RIFLE);
 	return true;
 }
 

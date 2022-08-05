@@ -740,8 +740,11 @@ void CCharacter::TickPaused()
 
 bool CCharacter::IncreaseHealth(int Amount)
 {
-	if(m_Health >= 10)
-		return false;
+	int AddArmor = 10 - m_Health - Amount;
+	if(AddArmor > 0)
+	{
+		IncreaseArmor(AddArmor);
+	}
 	m_Health = clamp(m_Health+Amount, 0, 10);
 	return true;
 }
