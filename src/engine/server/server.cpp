@@ -449,17 +449,17 @@ int CServer::Init()
 	m_CurrentGameTick = 0;
 
 	// XolePanic Start
-	SetWeaponMaxAmmo(WEAPON_HAMMER, -1);
-	SetWeaponMaxAmmo(WEAPON_GUN, 10);
-	SetWeaponMaxAmmo(WEAPON_SHOTGUN, 10);
-	SetWeaponMaxAmmo(WEAPON_GRENADE, 10);
-	SetWeaponMaxAmmo(WEAPON_RIFLE, 10);
+	SetWeaponMaxAmmo(XOLEWEAPON_HAMMER, -1);
+	SetWeaponMaxAmmo(XOLEWEAPON_GUN, 10);
+	SetWeaponMaxAmmo(XOLEWEAPON_SHOTGUN, 10);
+	SetWeaponMaxAmmo(XOLEWEAPON_GRENADE, 10);
+	SetWeaponMaxAmmo(XOLEWEAPON_RIFLE, 10);
 
-	SetWeaponAmmoRegenTime(WEAPON_HAMMER, 0);
-	SetWeaponAmmoRegenTime(WEAPON_GUN, 10);
-	SetWeaponAmmoRegenTime(WEAPON_SHOTGUN, 50);
-	SetWeaponAmmoRegenTime(WEAPON_GRENADE, 100);
-	SetWeaponAmmoRegenTime(WEAPON_RIFLE, 75);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_HAMMER, 0);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_GUN, 10);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_SHOTGUN, 50);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_GRENADE, 100);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_RIFLE, 75);
 	// XolePanic End
 
 	return 0;

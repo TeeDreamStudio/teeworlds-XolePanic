@@ -475,9 +475,9 @@ void CCharacter::HandleWeapons()
 	// ammo regen
 	for(int i=WEAPON_GUN; i<=WEAPON_RIFLE; i++)
 	{
-		int WID = GetInfWeaponID(i);
+		int WID = GetXoleWeaponID(i);
 		int AmmoRegenTime = Server()->GetWeaponAmmoRegenTime(WID);
-		int MaxAmmo = Server()->GetWeaponMaxAmmo(GetInfWeaponID(i));
+		int MaxAmmo = Server()->GetWeaponMaxAmmo(GetXoleWeaponID(i));
 		
 		if(AmmoRegenTime)
 		{
@@ -1136,9 +1136,9 @@ void CCharacter::UpdateTuningParam()
 	return;
 }
 
-int CCharacter::GetInfWeaponID(int WID)
+int CCharacter::GetXoleWeaponID(int Weapon)
 {
-	if(WID == WEAPON_HAMMER)
+	if(Weapon == WEAPON_HAMMER)
 	{
 		switch(GetRole())
 		{
@@ -1146,7 +1146,7 @@ int CCharacter::GetInfWeaponID(int WID)
 				return XOLEWEAPON_HAMMER;
 		}
 	}
-	else if(WID == WEAPON_GUN)
+	else if(Weapon == WEAPON_GUN)
 	{
 		switch(GetRole())
 		{
@@ -1154,7 +1154,7 @@ int CCharacter::GetInfWeaponID(int WID)
 				return XOLEWEAPON_GUN;
 		}
 	}
-	else if(WID == WEAPON_SHOTGUN)
+	else if(Weapon == WEAPON_SHOTGUN)
 	{
 		switch(GetRole())
 		{
@@ -1162,7 +1162,7 @@ int CCharacter::GetInfWeaponID(int WID)
 				return XOLEWEAPON_SHOTGUN;
 		}
 	}
-	else if(WID == WEAPON_GRENADE)
+	else if(Weapon == WEAPON_GRENADE)
 	{
 		switch(GetRole())
 		{
@@ -1170,7 +1170,7 @@ int CCharacter::GetInfWeaponID(int WID)
 				return XOLEWEAPON_GRENADE;
 		}
 	}
-	else if(WID == WEAPON_RIFLE)
+	else if(Weapon == WEAPON_RIFLE)
 	{
 		switch(GetRole())
 		{	
@@ -1178,7 +1178,7 @@ int CCharacter::GetInfWeaponID(int WID)
 				return XOLEWEAPON_RIFLE;
 		}
 	}
-	else if(WID == WEAPON_NINJA)
+	else if(Weapon == WEAPON_NINJA)
 	{
 		return XOLEWEAPON_NINJA;
 	}

@@ -138,7 +138,7 @@ public:
 	CCharacterCore m_Core;
 	// Xole Panic Start
 	int GetRole() const;
-	int GetInfWeaponID(int WID);
+	int GetXoleWeaponID(int Weapon);
 	bool IsZombie() const;
 	bool IsHuman() const;
 	bool IsWillDie() const;
