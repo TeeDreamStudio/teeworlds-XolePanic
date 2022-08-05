@@ -51,11 +51,8 @@ void CGameControllerXole::DoWincheck()
 		if(IsInfectionStarted() && !m_IsDoInfection)
 		{
 			GetFristInfectNum();
-			if(GameServer()->m_NumZombies < m_FristInfectNum)
-			{
-				DoFairInfection();
-				DoUnfairInfection();
-			}
+			DoFairInfection();
+			DoUnfairInfection();
 			m_IsDoInfection = true;
 		}
 	}
@@ -64,6 +61,7 @@ void CGameControllerXole::DoWincheck()
 void CGameControllerXole::StartRound()
 {
 	m_IsDoInfection = false;
+	GameServer()->CountPlayer();
 	IGameController::StartRound();
 }
 
