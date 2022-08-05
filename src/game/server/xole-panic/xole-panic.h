@@ -18,7 +18,6 @@ public:
 	void GetFristInfectNum();
 	void DoFairInfection();
 	void DoUnfairInfection();
-	bool m_IsDoInfection;
 	int m_FristInfectNum;
 };
 #endif
