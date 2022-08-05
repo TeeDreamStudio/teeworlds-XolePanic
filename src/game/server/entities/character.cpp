@@ -337,9 +337,9 @@ void CCharacter::FireWeapon()
 				{
 					if(pTarget->IsZombie())
 					{
-						if(pTarget->IncreaseHealth(4))
+						if(pTarget->IncreaseHealthAndArmor(4))
 						{
-							IncreaseHealth(1);
+							IncreaseHealthAndArmor(1);
 
 							pTarget->m_EmoteType = EMOTE_HAPPY;
 							pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
@@ -361,7 +361,7 @@ void CCharacter::FireWeapon()
 						{
 							pTarget->UnWillDie();
 						}
-						else pTarget->IncreaseHealth(2);
+						else pTarget->IncreaseHealthAndArmor(2);
 
 						pTarget->m_EmoteType = EMOTE_HAPPY;
 						pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
@@ -738,13 +738,21 @@ void CCharacter::TickPaused()
 		++m_EmoteStop;
 }
 
-bool CCharacter::IncreaseHealth(int Amount)
+bool CCharacter::IncreaseHealthAndArmor(int Amount)
 {
-	int AddArmor = 10 - m_Health - Amount;
+	int AddArmor = Amount- (10 - m_Health);
 	if(AddArmor > 0)
 	{
 		IncreaseArmor(AddArmor);
 	}
+	m_Health = clamp(m_Health+Amount, 0, 10);
+	return true;
+}
+
+bool CCharacter::IncreaseHealth(int Amount)
+{
+	if(m_Health >= 10)
+		return false;
 	m_Health = clamp(m_Health+Amount, 0, 10);
 	return true;
 }
