@@ -332,8 +332,40 @@ void CCharacter::FireWeapon()
 				else
 					Dir = vec2(0.f, -1.f);
 
-				pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
-					m_pPlayer->GetCID(), m_ActiveWeapon);
+				if(IsZombie())
+				{
+					if(pTarget->IsZombie())
+					{
+						if(pTarget->IncreaseHealth(4))
+						{
+							IncreaseHealth(1);
+
+							pTarget->m_EmoteType = EMOTE_HAPPY;
+							pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
+						}
+					}else if(GameServer()->m_pController->IsInfectionStarted())
+					{
+						pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+							m_pPlayer->GetCID(), m_ActiveWeapon);
+					}
+				}else if(GetRole() == PLAYERROLE_MEDIC)
+				{
+					if(pTarget->IsZombie())
+					{
+						pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, 20,
+							m_pPlayer->GetCID(), m_ActiveWeapon);
+					}else
+					{
+						if(pTarget->IsWillDie())
+						{
+							pTarget->UnWillDie();
+						}
+						else pTarget->IncreaseHealth(2);
+
+						pTarget->m_EmoteType = EMOTE_HAPPY;
+						pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
+					}
+				}
 				Hits++;
 			}
 
@@ -358,6 +390,12 @@ void CCharacter::FireWeapon()
 		case WEAPON_SHOTGUN:
 		{
 			int ShotSpread = 2;
+			float Force = 0.0f;
+
+			if(GetRole() == PLAYERROLE_MEDIC)
+			{
+				Force = 16.0f;
+			}
 
 			for(int i = -ShotSpread; i <= ShotSpread; ++i)
 			{
@@ -371,7 +409,7 @@ void CCharacter::FireWeapon()
 					ProjStartPos,
 					vec2(cosf(a), sinf(a))*Speed,
 					(int)(Server()->TickSpeed()*GameServer()->Tuning()->m_ShotgunLifetime),
-					1, 0, 0, -1, WEAPON_SHOTGUN);
+					1, 0, Force, -1, WEAPON_SHOTGUN);
 			}
 
 			GameServer()->CreateSound(m_Pos, SOUND_SHOTGUN_FIRE);
@@ -565,7 +603,7 @@ void CCharacter::Tick()
 			m_Input.m_TargetX = 0;
 			m_Input.m_TargetY = 0;
 			m_Input.m_Hook = 0;
-			GameServer()->SendBroadcast_VL(_("If no humans to help You.\nYou will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
+			GameServer()->SendBroadcast_VL(_("If no medics to help You.\nYou will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
 		}else
 		{
 			m_pPlayer->StartInfection();
@@ -575,25 +613,6 @@ void CCharacter::Tick()
 
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true, m_pPlayer->GetNextTuningParams());
-
-	vec2 HelpPos;
-	CCharacter *TargetChr = GameServer()->m_World.IntersectCharacter(m_Pos, m_Pos, 32.0f, HelpPos, this);
-	if(TargetChr && TargetChr->IsWillDie())
-	{
-		if(m_Input.m_Hook != 0)
-		{
-			if(TargetChr)
-			{
-				TargetChr->UnWillDie();
-				TargetChr->IncreaseArmor(10);
-			}
-		}else
-		{
-			if(!(m_HelpTick % 50))
-				GameServer()->SendBroadcast_VL(_("Use hook to revive him"), m_pPlayer->GetCID());
-		}
-		m_HelpTick++;
-	}else m_HelpTick = 0;
 
 	if(GameServer()->m_pController->IsInfectionStarted() && IsHuman())
 	{

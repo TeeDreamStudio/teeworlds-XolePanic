@@ -456,10 +456,10 @@ int CServer::Init()
 	SetWeaponMaxAmmo(WEAPON_RIFLE, 10);
 
 	SetWeaponAmmoRegenTime(WEAPON_HAMMER, 0);
-	SetWeaponAmmoRegenTime(WEAPON_GUN, 25);
-	SetWeaponAmmoRegenTime(WEAPON_SHOTGUN, 75);
+	SetWeaponAmmoRegenTime(WEAPON_GUN, 10);
+	SetWeaponAmmoRegenTime(WEAPON_SHOTGUN, 50);
 	SetWeaponAmmoRegenTime(WEAPON_GRENADE, 100);
-	SetWeaponAmmoRegenTime(WEAPON_RIFLE, 125);
+	SetWeaponAmmoRegenTime(WEAPON_RIFLE, 75);
 	// XolePanic End
 
 	return 0;
