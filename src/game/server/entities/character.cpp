@@ -395,7 +395,7 @@ void CCharacter::FireWeapon()
 
 			if(GetRole() == PLAYERROLE_MEDIC)
 			{
-				Force = 16.0f;
+				Force = 8.0f;
 			}
 
 			for(int i = -ShotSpread; i <= ShotSpread; ++i)
@@ -1023,6 +1023,7 @@ bool CCharacter::IsWillDie() const
 void CCharacter::UnWillDie()
 {
 	m_WillDie = false;
+	m_LastReviveTick = Server()->Tick();
 	m_WillDieTick = 0;
 }
 

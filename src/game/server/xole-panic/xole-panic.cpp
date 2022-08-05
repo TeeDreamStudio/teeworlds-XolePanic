@@ -14,7 +14,6 @@ CGameControllerXole::CGameControllerXole(class CGameContext *pGameServer)
 	// Exchange this to a string that identifies your game mode.
 	// DM, TDM and CTF are reserved for teeworlds original modes.
 	m_pGameType = "XolePanic";
-	m_IsDoInfection = false;
 	m_RoundStartTick = 0;
 	m_FristInfectNum = 0;
 }
@@ -48,19 +47,22 @@ void CGameControllerXole::DoWincheck()
 			GameServer()->CreateSoundGlobal(SOUND_CTF_CAPTURE);
 		}
 
-		if(IsInfectionStarted() && !m_IsDoInfection)
+		if(IsInfectionStarted())
 		{
-			GetFristInfectNum();
-			DoFairInfection();
-			DoUnfairInfection();
-			m_IsDoInfection = true;
+			bool IsDoInfection =  (Server()->Tick() - m_RoundStartTick) == (Server()->TickSpeed() * g_Config.m_XoleInfectStartSec);
+		
+			if(IsDoInfection)
+			{
+				GetFristInfectNum();
+				DoFairInfection();
+				DoUnfairInfection();
+			}
 		}
 	}
 }
 
 void CGameControllerXole::StartRound()
 {
-	m_IsDoInfection = false;
 	GameServer()->CountPlayer();
 	IGameController::StartRound();
 }
