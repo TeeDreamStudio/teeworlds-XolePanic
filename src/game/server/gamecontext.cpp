@@ -803,7 +803,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			{
 				char aChatmsg[512] = {0};
 				str_format(aChatmsg, sizeof(aChatmsg), _("You must wait %d seconds before making another vote"), (Timeleft/Server()->TickSpeed())+1);
-				SendChatTarget(ClientID, _("You must wait {str:Time} seconds before making another vote"), "Time", (Timeleft/Server()->TickSpeed())+1);
+				SendChatTarget(ClientID, _("You must wait {sec:Time} seconds before making another vote"), "Time", (Timeleft/Server()->TickSpeed())+1);
 				return;
 			}
 
@@ -1002,11 +1002,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			{
 				pPlayer->m_LastSetTeam = Server()->Tick();
 				int TimeLeft = (pPlayer->m_TeamChangeTick - Server()->Tick())/Server()->TickSpeed();
-				char aBuf[128];
-				char aTime[128];
-				str_format(aTime, sizeof(aTime), "%02d:%02d", TimeLeft/60, TimeLeft%60);
-				str_format(aBuf, sizeof(aBuf), "Time to wait before changing team: %s", aTime);
-				SendBroadcast_VL(_("Time to wait before changing team: {str:Time}"), ClientID, "Time", aTime);
+				SendBroadcast_VL(_("Time to wait before changing team: {sec:Time}"), ClientID, "Time", TimeLeft);
 				return;
 			}
 

@@ -61,8 +61,8 @@
             "value": "管理员强制为投票执行否决"
         },
         {
-            "key": "You must wait {str:Time} seconds before making another vote",
-            "value": "你必须等待 {str:Time} 秒才能再次提出另一个投票"
+            "key": "You must wait {sec:Time} seconds before making another vote",
+            "value": "你必须等待 {sec:Time} 才能再次提出另一个投票"
         },
         {
             "key": "'{str:PlayerName}' called vote to change server option '{str:Option}' (str:Reason)",
