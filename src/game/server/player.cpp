@@ -399,7 +399,7 @@ void CPlayer::SetRole(int Role)
 	}
 }
 
-void CPlayer::StartInfection()
+void CPlayer::StartInfection(bool Die)
 {
 	if(m_pCharacter)
 	{
