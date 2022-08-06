@@ -16,6 +16,12 @@ enum
 	WEAPON_WORLD = -1, // death tiles etc
 };
 
+enum
+{
+	TAKEDAMAGEMODE_TEEWORLDS=0,
+	TAKEDAMAGEMODE_XOLEPANIC,
+};
+
 class CCharacter : public CEntity
 {
 	MACRO_ALLOC_POOL_ID()
@@ -48,7 +54,7 @@ public:
 	void FireWeapon();
 
 	void Die(int Killer, int Weapon);
-	bool TakeDamage(vec2 Force, int Dmg, int From, int Weapon);
+	bool TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int TakeDmgMode = TAKEDAMAGEMODE_TEEWORLDS);
 
 	bool Spawn(class CPlayer *pPlayer, vec2 Pos);
 	bool Remove();
@@ -111,6 +117,7 @@ private:
 	int m_Jumped;
 
 	int m_DamageTakenTick;
+	int m_HookDmgTick;
 
 	int m_Health;
 	int m_Armor;
@@ -151,7 +158,9 @@ public:
 	int m_AirJumpCounter;
 	int m_HelpTick;
 	bool m_CanSwitchRole;
-	// Xole Panic End
+
+	bool IsRoleCanHookDamage();
+		// Xole Panic End
 };
 
 #endif

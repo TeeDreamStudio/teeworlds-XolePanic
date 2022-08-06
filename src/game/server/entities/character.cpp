@@ -65,6 +65,7 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_WillDieKiller = -1;
 	m_WillDieWeapon = -1;
 	m_LastReviveTick = 0;
+	m_HookDmgTick = 0;
 	m_HelpTick = 0;
 	m_WillDie = false;
 	m_InInfectZone = false;
@@ -347,7 +348,7 @@ void CCharacter::FireWeapon()
 					}else if(GameServer()->m_pController->IsInfectionStarted())
 					{
 						pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
-							m_pPlayer->GetCID(), m_ActiveWeapon);
+							m_pPlayer->GetCID(), m_ActiveWeapon, TAKEDAMAGEMODE_XOLEPANIC);
 					}
 				}else if(GetRole() == PLAYERROLE_MEDIC)
 				{
@@ -491,6 +492,30 @@ void CCharacter::HandleWeapons()
 					// Add some ammo
 					m_aWeapons[i].m_Ammo = min(m_aWeapons[i].m_Ammo + 1, MaxAmmo);
 					m_aWeapons[i].m_AmmoRegenStart = -1;
+				}
+			}
+		}
+	}
+
+	if(IsRoleCanHookDamage())
+	{
+		if(m_Core.m_HookedPlayer >= 0)
+		{
+			CCharacter *VictimChar = GameServer()->GetPlayerChar(m_Core.m_HookedPlayer);
+			if(VictimChar)
+			{
+				int Damage = 1;
+				if(GetRole() == PLAYERROLE_SMOKER)
+				{
+					Damage = g_Config.m_XoleSmokerHookDamage;
+				}
+
+				if(m_HookDmgTick + Server()->TickSpeed() < Server()->Tick())
+				{
+					m_HookDmgTick = Server()->Tick();
+					VictimChar->TakeDamage(vec2(0.0f,0.0f), Damage, m_pPlayer->GetCID(), WEAPON_NINJA, TAKEDAMAGEMODE_TEEWORLDS	);
+					if(GetRole() == PLAYERROLE_SMOKER && VictimChar->IsHuman())
+						IncreaseHealthAndArmor(2);
 				}
 			}
 		}
@@ -804,16 +829,13 @@ void CCharacter::Die(int Killer, int Weapon)
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCID());
 }
 
-bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
+bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int TakeDmgMode)
 {
 	if(m_WillDie)
 	{
 		return false;
 	}
 	m_Core.m_Vel += Force;
-
-	if(GameServer()->m_pController->IsFriendlyFire(m_pPlayer->GetCID(), From) && !g_Config.m_SvTeamdamage)
-		return false;
 
 	CPlayer *pFrom = GameServer()->m_apPlayers[From];
 
@@ -826,7 +848,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 		return false;
 	}
 
-	if(pFrom->IsZombie())
+	if(TakeDmgMode == TAKEDAMAGEMODE_XOLEPANIC)
 	{
 		if(((Server()->Tick() - m_LastReviveTick) / 50) >= g_Config.m_XoleReviverCDSec)
 		{
@@ -1193,6 +1215,15 @@ int CCharacter::GetXoleWeaponID(int Weapon)
 	else if(Weapon == WEAPON_NINJA)
 	{
 		return XOLEWEAPON_NINJA;
+	}
+}
+
+bool CCharacter::IsRoleCanHookDamage()
+{
+	switch (GetRole())
+	{
+		case PLAYERROLE_SMOKER: return true ;break;
+		default:return false;break;
 	}
 }
 // XolePanic End

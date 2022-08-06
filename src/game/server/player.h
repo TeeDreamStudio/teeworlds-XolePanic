@@ -130,7 +130,7 @@ public:
 	bool IsHuman() const;
 	int GetRole() const;
 	void SetRole(int Role);
-	void StartInfection();
+	void StartInfection(bool Die=false);
 	void SetRoleSkin(int Role);
 
 private:

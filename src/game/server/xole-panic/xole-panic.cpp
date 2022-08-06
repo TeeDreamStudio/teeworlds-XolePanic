@@ -132,7 +132,7 @@ void CGameControllerXole::DoFairInfection()
 		Server()->InfectClient(FairInfVector[random]);
 
 		//infect player behind clientid taken from vector
-		GameServer()->m_apPlayers[FairInfVector[random]]->StartInfection();
+		GameServer()->m_apPlayers[FairInfVector[random]]->StartInfection(true);
 
 		//notification to other players
 		GameServer()->SendChatTarget(-1, _("{str:VictimName} has been infected"),
@@ -170,7 +170,7 @@ void CGameControllerXole::DoUnfairInfection()
 		int random = random_int(0, UnfairInfVector.size() - 1);
 
 		//infect player behind clientid taken from vector
-		GameServer()->m_apPlayers[UnfairInfVector[random]]->StartInfection();
+		GameServer()->m_apPlayers[UnfairInfVector[random]]->StartInfection(true);
 
 		//notification to other players
 		GameServer()->SendChatTarget(-1, _("{str:VictimName} has been infected"),
