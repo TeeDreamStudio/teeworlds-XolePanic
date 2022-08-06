@@ -10,6 +10,7 @@ class CGameControllerXole : public IGameController
 {
 public:
 	CGameControllerXole(class CGameContext *pGameServer);
+	virtual bool PreSpawn(CPlayer* pPlayer, vec2 *pPos);
 	virtual void Tick();
 	virtual void DoWincheck();
 	virtual void OnCharacterSpawn(class CCharacter *pChr);
@@ -19,5 +20,7 @@ public:
 	void DoFairInfection();
 	void DoUnfairInfection();
 	int m_FristInfectNum;
+private:
+	bool IsSpawnable(vec2 Pos);
 };
 #endif

@@ -189,3 +189,44 @@ void CGameControllerXole::DoUnfairInfection()
 		Server()->UnInfectClient(*it);
 	}
 }
+
+bool CGameControllerXole::IsSpawnable(vec2 Pos)
+{
+	//First check if there is a tee too close
+	CCharacter *aEnts[MAX_CLIENTS];
+	int Num = GameServer()->m_World.FindEntities(Pos, 64, (CEntity**)aEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+	
+	for(int c = 0; c < Num; ++c)
+	{
+		if(distance(aEnts[c]->m_Pos, Pos) <= 60)
+			return false;
+	}
+	
+	return true;
+}
+
+bool CGameControllerXole::PreSpawn(CPlayer* pPlayer, vec2 *pOutPos)
+{
+	// spectators can't spawn
+	if(pPlayer->GetTeam() == TEAM_SPECTATORS)
+		return false;
+	
+	if(IsInfectionStarted())
+		pPlayer->StartInfection();
+			
+	int Type = (pPlayer->IsZombie() ? 1 : 0);
+
+	// get spawn point
+	int RandomShift = random_int(0, m_SpawnPoints[Type].size()-1);
+	for(int i = 0; i < m_SpawnPoints[Type].size(); i++)
+	{
+		int I = (i + RandomShift)%m_SpawnPoints[Type].size();
+		if(IsSpawnable(m_SpawnPoints[Type][I]))
+		{
+			*pOutPos = m_SpawnPoints[Type][I];
+			return true;
+		}
+	}
+	
+	return false;
+}

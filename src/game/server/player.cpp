@@ -352,7 +352,7 @@ void CPlayer::TryRespawn()
 {
 	vec2 SpawnPos;
 
-	if(!GameServer()->m_pController->CanSpawn(m_Team, IsZombie(), &SpawnPos))
+	if(!GameServer()->m_pController->PreSpawn(this, &SpawnPos))
 		return;
 
 	m_Spawning = false;
@@ -404,6 +404,10 @@ void CPlayer::StartInfection(bool Die)
 	if(m_pCharacter)
 	{
 		GameServer()->CreatePlayerSpawn(m_pCharacter->m_Pos);
+		if(Die)
+		{
+			m_pCharacter->Die(-1, WEAPON_GAME);
+		}
 	}
 	SetRole(random_int(START_ZOMBIEROLE+1, END_ZOMBIEROLE-1));
 }

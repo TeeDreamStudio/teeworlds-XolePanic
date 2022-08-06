@@ -29,84 +29,34 @@ IGameController::IGameController(class CGameContext *pGameServer)
 
 	m_UnbalancedTick = -1;
 	m_ForceBalanced = false;
-
-	m_aNumSpawnPoints[0] = 0;
-	m_aNumSpawnPoints[1] = 0;
 }
 
 IGameController::~IGameController()
 {
 }
 
-float IGameController::EvaluateSpawnPos(CSpawnEval *pEval, vec2 Pos)
+bool IGameController::PreSpawn(CPlayer* pPlayer, vec2 *pOutPos)
 {
-	float Score = 0.0f;
-	CCharacter *pC = static_cast<CCharacter *>(GameServer()->m_World.FindFirst(CGameWorld::ENTTYPE_CHARACTER));
-	for(; pC; pC = (CCharacter *)pC->TypeNext())
-	{
-		// team mates are not as dangerous as enemies
-		float Scoremod = 1.0f;
-		if(pEval->m_FriendlyTeam != -1 && pC->GetPlayer()->GetTeam() == pEval->m_FriendlyTeam)
-			Scoremod = 0.5f;
-
-		float d = distance(Pos, pC->m_Pos);
-		Score += Scoremod * (d == 0 ? 1000000000.0f : 1.0f/d);
-	}
-
-	return Score;
-}
-
-void IGameController::EvaluateSpawnType(CSpawnEval *pEval, int Type)
-{
-	// get spawn point
-	for(int i = 0; i < m_aNumSpawnPoints[Type]; i++)
-	{
-		// check if the position is occupado
-		CCharacter *aEnts[MAX_CLIENTS];
-		int Num = GameServer()->m_World.FindEntities(m_aaSpawnPoints[Type][i], 8, (CEntity**)aEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
-		vec2 Positions[5] = { vec2(0.0f, 0.0f), vec2(-32.0f, 0.0f), vec2(0.0f, -32.0f), vec2(32.0f, 0.0f), vec2(0.0f, 32.0f) };	// start, left, up, right, down
-		int Result = -1;
-		for(int Index = 0; Index < 5 && Result == -1; ++Index)
-		{
-			Result = Index;
-			for(int c = 0; c < Num; ++c)
-				if(GameServer()->Collision()->CheckPoint(m_aaSpawnPoints[Type][i]+Positions[Index]) ||
-					distance(aEnts[c]->m_Pos, m_aaSpawnPoints[Type][i]+Positions[Index]) <= aEnts[c]->m_ProximityRadius)
-				{
-					Result = -1;
-					break;
-				}
-		}
-		if(Result == -1)
-			continue;	// try next spawn point
-
-		vec2 P = m_aaSpawnPoints[Type][i]+Positions[Result];
-		float S = EvaluateSpawnPos(pEval, P);
-		if(!pEval->m_Got || pEval->m_Score > S)
-		{
-			pEval->m_Got = true;
-			pEval->m_Score = S;
-			pEval->m_Pos = P;
-		}
-	}
-}
-
-bool IGameController::CanSpawn(int Team, bool IsZombie, vec2 *pOutPos)
-{
-	CSpawnEval Eval;
-
+	int Team = pPlayer->GetTeam();
+	
 	// spectators can't spawn
 	if(Team == TEAM_SPECTATORS)
 		return false;
-	if(!IsZombie)
-		EvaluateSpawnType(&Eval, 0);
-	else if(IsZombie)
-		EvaluateSpawnType(&Eval, 1);
 
-	*pOutPos = Eval.m_Pos;
-	return Eval.m_Got;
+	int Type = (pPlayer->IsZombie() ? TEAM_RED : TEAM_BLUE);
+
+	// get spawn point
+	for(int i = 0; i < m_SpawnPoints[Type].size(); i++)
+	{
+		if(IsSpawnable(m_SpawnPoints[Type][i]))
+		{
+			*pOutPos = m_SpawnPoints[Type][i];
+			return true;
+		}
+	}
+	
+	return false;
 }
-
 
 bool IGameController::OnEntity(const char* pName, vec2 Pivot, vec2 P0, vec2 P1, vec2 P2, vec2 P3, int PosEnv)
 {
@@ -115,9 +65,9 @@ bool IGameController::OnEntity(const char* pName, vec2 Pivot, vec2 P0, vec2 P1, 
 	int SubType = 0;
 
 	if(str_comp(pName, "humanSpawn") == 0)
-		m_aaSpawnPoints[0][m_aNumSpawnPoints[0]++] = Pos;
+		m_SpawnPoints[0].add(Pos);
 	else if(str_comp(pName, "zombieSpawn") == 0)
-		m_aaSpawnPoints[1][m_aNumSpawnPoints[1]++] = Pos;
+		m_SpawnPoints[1].add(Pos);
 
 	return false;
 }

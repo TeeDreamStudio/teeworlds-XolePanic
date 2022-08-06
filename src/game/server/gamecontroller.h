@@ -4,6 +4,7 @@
 #define GAME_SERVER_GAMECONTROLLER_H
 
 #include <base/vmath.h>
+#include <base/tl/array.h>
 
 #ifdef _MSC_VER
 typedef __int32 int32_t;
@@ -21,8 +22,6 @@ typedef unsigned __int64 uint64_t;
 */
 class IGameController
 {
-	vec2 m_aaSpawnPoints[2][64];
-	int m_aNumSpawnPoints[2];
 
 	class CGameContext *m_pGameServer;
 	class IServer *m_pServer;
@@ -31,24 +30,7 @@ protected:
 	CGameContext *GameServer() const { return m_pGameServer; }
 	IServer *Server() const { return m_pServer; }
 
-	struct CSpawnEval
-	{
-		CSpawnEval()
-		{
-			m_Got = false;
-			m_FriendlyTeam = -1;
-			m_Pos = vec2(100,100);
-		}
-
-		vec2 m_Pos;
-		bool m_Got;
-		int m_FriendlyTeam;
-		float m_Score;
-	};
-
-	float EvaluateSpawnPos(CSpawnEval *pEval, vec2 Pos);
-	void EvaluateSpawnType(CSpawnEval *pEval, int Type);
-	bool EvaluateSpawn(class CPlayer *pP, vec2 *pPos);
+	array<vec2> m_SpawnPoints[2];
 
 	void CycleMap();
 	void ResetGame();
@@ -138,10 +120,6 @@ public:
 
 
 	virtual void OnPlayerInfoChange(class CPlayer *pP);
-
-	//
-	virtual bool CanSpawn(int Team, bool IsZombie, vec2 *pPos);
-
 	/*
 
 	*/
@@ -155,7 +133,9 @@ public:
 	virtual void PostReset();
 
 	double GetTime();
-
+	// XolePanic
+	virtual bool PreSpawn(CPlayer* pPlayer, vec2 *pPos);
+	virtual bool IsSpawnable(vec2 Position) = 0;
 	bool IsInfectionStarted();
 };
 
