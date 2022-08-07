@@ -1163,12 +1163,15 @@ void CCharacter::HandleZone()
 	{
 		Die(m_pPlayer->GetCID(), WEAPON_WORLD);
 	}
+	// handle Teeuniverse Zone
+	int Index = GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_Panic, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f);
 
 	// handle safe zone
 	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
 		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
 		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE)
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE
+		|| Index == ZONE_PANIC_SAFE_ZONE)
 	{
 		if(!(GameServer()->m_HasZombieInSafeZone) && IsZombie())
 		{
@@ -1179,7 +1182,8 @@ void CCharacter::HandleZone()
 	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
 		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
 		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE)
+		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE
+		|| Index == ZONE_PANIC_INFECT_ZONE)
 	{
 		if(IsHuman())
 		{
@@ -1195,33 +1199,6 @@ void CCharacter::HandleZone()
 		}
 		m_InInfectZone = false;
 	}
-	// handle Teeuniverse Zone
-	int Index = GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_Panic, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f);
-
-	if(Index == ZONE_PANIC_SAFE_ZONE)
-	{
-		if(!(GameServer()->m_HasZombieInSafeZone) && IsZombie())
-		{
-			GameServer()->m_HasZombieInSafeZone = true;
-		}
-	}
-	else if(Index == ZONE_PANIC_INFECT_ZONE)
-	{
-		if(IsHuman())
-		{
-			m_pPlayer->StartInfection();
-		}
-		m_InInfectZone = true;
-		m_CanSwitchRole = true;
-	}else
-	{
-		if(IsZombie())
-		{
-			m_CanSwitchRole = false;
-		}
-		m_InInfectZone = false;
-	}
-
 }
 
 void CCharacter::UpdateTuningParam()
