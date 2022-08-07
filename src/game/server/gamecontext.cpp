@@ -1762,6 +1762,7 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 
 	//Get zones
 	m_ZoneHandle_TeeWorlds = m_Collision.GetZoneHandle("teeworlds");
+	m_ZoneHandle_Panic = m_Collision.GetZoneHandle("Panic");
 
 	// reset everything here
 	//world = new GAMEWORLD;

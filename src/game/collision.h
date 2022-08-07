@@ -28,6 +28,8 @@ public:
 		COLFLAG_NOHOOK=4,
 		COLFLAG_SAFEZONE=8,
 		COLFLAG_INFECTZONE=16,
+
+		ZONE_PANIC=1,
 	};
 
 	CCollision();
@@ -47,6 +49,7 @@ public:
 	//This function return an Handle to access all zone layers with the name "pName"
 	int GetZoneHandle(const char* pName);
 	int GetZoneValueAt(int ZoneHandle, float x, float y);
+	int GetZoneValueAt(int ZoneHandle, vec2 Pos) { return GetZoneValueAt(ZoneHandle, Pos.x, Pos.y); }
 };
 
 #endif

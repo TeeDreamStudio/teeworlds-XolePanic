@@ -91,7 +91,7 @@ public:
 	int m_ChatPrintCBIndex;
 public:
 	int m_ZoneHandle_TeeWorlds;
-
+	int m_ZoneHandle_Panic;
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
