@@ -1026,12 +1026,20 @@ void CCharacter::Snap(int SnappingClient)
 		pCharacter->m_Tick = m_ReckoningTick;
 		m_SendCore.Write(pCharacter);
 	}
+	
+	// set emote
+	if (m_EmoteStop < Server()->Tick())
+	{
+		m_EmoteType = EMOTE_NORMAL;
+		m_EmoteStop = -1;
+	}
 
 	if (pCharacter->m_HookedPlayer != -1)
 	{
 		if (!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
 			pCharacter->m_HookedPlayer = -1;
 	}
+
 	if(m_WillDie)
 	{
 		pCharacter->m_Emote = EMOTE_PAIN;
