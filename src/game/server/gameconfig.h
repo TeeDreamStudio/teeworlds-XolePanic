@@ -12,5 +12,7 @@ MACRO_CONFIG_INT(XoleReviverCDSec, xole_revive_cd_sec, 10, 3, 5, CFGFLAG_SERVER,
 
 //Role
 MACRO_CONFIG_INT(XoleSmokerHookDamage, xole_smoker_hook_dmg, 3, 3, 20, CFGFLAG_SERVER, "Smoker hook damage")
+MACRO_CONFIG_INT(XoleSniperInvisibleSec, xole_sniper_invisible_sec, 3, 1, 20, CFGFLAG_SERVER, "Sniper invisible second")
+MACRO_CONFIG_INT(XoleSniperReInvisibleSec, xole_sniper_reinvisible_sec, 5, 1, 20, CFGFLAG_SERVER, "Sniper reinvisible second")
 
 #endif

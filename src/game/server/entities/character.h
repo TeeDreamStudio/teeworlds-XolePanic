@@ -159,8 +159,13 @@ public:
 	int m_HelpTick;
 	bool m_CanSwitchRole;
 
-	bool IsRoleCanHookDamage();
-		// Xole Panic End
+	bool IsRoleCanHookDamage() const;
+	bool IsInvisible() const;
+private:
+	bool m_IsInvisible;
+	int m_InvisibleTick;
+	int m_VisibleTick;
+	// Xole Panic End
 };
 
 #endif

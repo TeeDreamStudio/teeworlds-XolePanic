@@ -70,6 +70,9 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_WillDie = false;
 	m_InInfectZone = false;
 	m_CanSwitchRole = true;
+	m_InvisibleTick = 0;
+	m_VisibleTick = 0;
+	m_IsInvisible = false;
 
 	m_pPlayer = pPlayer;
 	m_Pos = Pos;
@@ -306,75 +309,96 @@ void CCharacter::FireWeapon()
 	{
 		case WEAPON_HAMMER:
 		{
-			// reset objects Hit
-			m_NumObjectsHit = 0;
-			GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE);
-
-			CCharacter *apEnts[MAX_CLIENTS];
-			int Hits = 0;
-			int Num = GameServer()->m_World.FindEntities(ProjStartPos, m_ProximityRadius*0.5f, (CEntity**)apEnts,
-														MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
-
-			for (int i = 0; i < Num; ++i)
+			if(GetRole() == PLAYERROLE_SNIPER)
 			{
-				CCharacter *pTarget = apEnts[i];
-
-				if ((pTarget == this) || GameServer()->Collision()->IntersectLine(ProjStartPos, pTarget->m_Pos, NULL, NULL))
-					continue;
-
-				// set his velocity to fast upward (for now)
-				if(length(pTarget->m_Pos-ProjStartPos) > 0.0f)
-					GameServer()->CreateHammerHit(pTarget->m_Pos-normalize(pTarget->m_Pos-ProjStartPos)*m_ProximityRadius*0.5f);
-				else
-					GameServer()->CreateHammerHit(ProjStartPos);
-
-				vec2 Dir;
-				if (length(pTarget->m_Pos - m_Pos) > 0.0f)
-					Dir = normalize(pTarget->m_Pos - m_Pos);
-				else
-					Dir = vec2(0.f, -1.f);
-
-				if(IsZombie())
+				if(Server()->Tick() - m_VisibleTick >= g_Config.m_XoleSniperReInvisibleSec * 50)
 				{
-					if(pTarget->IsZombie())
+					m_IsInvisible = !m_IsInvisible;
+					if(m_IsInvisible)
 					{
-						if(pTarget->IncreaseHealthAndArmor(4))
+						m_InvisibleTick = g_Config.m_XoleSniperInvisibleSec * 50;
+						int Time = m_InvisibleTick/50;
+						GameServer()->SendBroadcast_VL(_("You are invisible: {sec:Time}"), m_pPlayer->GetCID(), "Time", &Time, NULL);
+					}else 
+					{
+						m_InvisibleTick = 0;
+						m_VisibleTick = Server()->Tick();
+						GameServer()->SendBroadcast("", m_pPlayer->GetCID());
+					}
+				}
+				GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE);
+			}
+			else
+			{
+				// reset objects Hit
+				m_NumObjectsHit = 0;
+				GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE);
+
+				CCharacter *apEnts[MAX_CLIENTS];
+				int Hits = 0;
+				int Num = GameServer()->m_World.FindEntities(ProjStartPos, m_ProximityRadius*0.5f, (CEntity**)apEnts,
+															MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+
+				for (int i = 0; i < Num; ++i)
+				{
+					CCharacter *pTarget = apEnts[i];
+
+					if ((pTarget == this) || GameServer()->Collision()->IntersectLine(ProjStartPos, pTarget->m_Pos, NULL, NULL))
+						continue;
+
+					// set his velocity to fast upward (for now)
+					if(length(pTarget->m_Pos-ProjStartPos) > 0.0f)
+						GameServer()->CreateHammerHit(pTarget->m_Pos-normalize(pTarget->m_Pos-ProjStartPos)*m_ProximityRadius*0.5f);
+					else
+						GameServer()->CreateHammerHit(ProjStartPos);
+
+					vec2 Dir;
+					if (length(pTarget->m_Pos - m_Pos) > 0.0f)
+						Dir = normalize(pTarget->m_Pos - m_Pos);
+					else
+						Dir = vec2(0.f, -1.f);
+
+					if(IsZombie())
+					{
+						if(pTarget->IsZombie())
 						{
-							IncreaseHealthAndArmor(1);
+							if(pTarget->IncreaseHealthAndArmor(4))
+							{
+								IncreaseHealthAndArmor(1);
+
+								pTarget->m_EmoteType = EMOTE_HAPPY;
+								pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
+							}
+						}else if(GameServer()->m_pController->IsInfectionStarted())
+						{
+							pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+								m_pPlayer->GetCID(), m_ActiveWeapon, TAKEDAMAGEMODE_XOLEPANIC);
+						}
+					}else if(GetRole() == PLAYERROLE_MEDIC)
+					{
+						if(pTarget->IsZombie())
+						{
+							pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, 20,
+								m_pPlayer->GetCID(), m_ActiveWeapon);
+						}else
+						{
+							if(pTarget->IsWillDie())
+							{
+								pTarget->UnWillDie();
+							}
+							else pTarget->IncreaseHealthAndArmor(2);
 
 							pTarget->m_EmoteType = EMOTE_HAPPY;
 							pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
 						}
-					}else if(GameServer()->m_pController->IsInfectionStarted())
-					{
-						pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
-							m_pPlayer->GetCID(), m_ActiveWeapon, TAKEDAMAGEMODE_XOLEPANIC);
 					}
-				}else if(GetRole() == PLAYERROLE_MEDIC)
-				{
-					if(pTarget->IsZombie())
-					{
-						pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, 20,
-							m_pPlayer->GetCID(), m_ActiveWeapon);
-					}else
-					{
-						if(pTarget->IsWillDie())
-						{
-							pTarget->UnWillDie();
-						}
-						else pTarget->IncreaseHealthAndArmor(2);
-
-						pTarget->m_EmoteType = EMOTE_HAPPY;
-						pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
-					}
+					Hits++;
 				}
-				Hits++;
+
+				// if we Hit anything, we have to wait for the reload
+				if(Hits)
+					m_ReloadTimer = Server()->TickSpeed()/3;
 			}
-
-			// if we Hit anything, we have to wait for the reload
-			if(Hits)
-				m_ReloadTimer = Server()->TickSpeed()/3;
-
 		} break;
 
 		case WEAPON_GUN:
@@ -455,7 +479,7 @@ void CCharacter::FireWeapon()
 		m_aWeapons[m_ActiveWeapon].m_Ammo--;
 
 	if(!m_ReloadTimer)
-		m_ReloadTimer = g_pData->m_Weapons.m_aId[m_ActiveWeapon].m_Firedelay * Server()->TickSpeed() / 1000;
+		m_ReloadTimer = Server()->GetWeaponFireDelay(GetXoleWeaponID(m_ActiveWeapon)) * Server()->TickSpeed() / 1000;
 }
 
 void CCharacter::HandleWeapons()
@@ -487,7 +511,7 @@ void CCharacter::HandleWeapons()
 				if (m_aWeapons[i].m_AmmoRegenStart < 0)
 					m_aWeapons[i].m_AmmoRegenStart = Server()->Tick();
 
-				if ((Server()->Tick() - m_aWeapons[i].m_AmmoRegenStart) >= AmmoRegenTime)
+				if ((Server()->Tick() - m_aWeapons[m_ActiveWeapon].m_AmmoRegenStart) >= AmmoRegenTime * Server()->TickSpeed() / 1000)
 				{
 					// Add some ammo
 					m_aWeapons[i].m_Ammo = min(m_aWeapons[i].m_Ammo + 1, MaxAmmo);
@@ -644,6 +668,23 @@ void CCharacter::Tick()
 	{
 		m_CanSwitchRole = false;
 	}
+
+	if(m_InvisibleTick)
+	{
+		m_InvisibleTick--;
+		if(!(m_InvisibleTick%50))
+		{
+			int Time = m_InvisibleTick/50;
+			GameServer()->SendBroadcast_VL(_("You are invisible: {sec:Time}"), m_pPlayer->GetCID(), "Time", &Time, NULL);
+		}
+		if(!m_InvisibleTick)
+		{
+			m_IsInvisible = false;
+			m_VisibleTick = Server()->Tick();
+			GameServer()->SendBroadcast("", m_pPlayer->GetCID());
+		}
+	}
+
 	// handle Zones
 	HandleZone();
 
@@ -958,6 +999,16 @@ void CCharacter::Snap(int SnappingClient)
 	if(NetworkClipped(SnappingClient))
 		return;
 
+	CPlayer *SnapPlayer = GameServer()->m_apPlayers[SnappingClient];
+	if(!SnapPlayer)
+	{
+		return;
+	}
+	else if(SnapPlayer->IsZombie() != IsZombie() && IsInvisible())
+	{
+		return;
+	}
+
 	CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->SnapNewItem(NETOBJTYPE_CHARACTER, Id, sizeof(CNetObj_Character)));
 	if(!pCharacter)
 		return;
@@ -976,13 +1027,6 @@ void CCharacter::Snap(int SnappingClient)
 		m_SendCore.Write(pCharacter);
 	}
 
-	// set emote
-	if (m_EmoteStop < Server()->Tick())
-	{
-		m_EmoteType = EMOTE_NORMAL;
-		m_EmoteStop = -1;
-	}
-
 	if (pCharacter->m_HookedPlayer != -1)
 	{
 		if (!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
@@ -992,8 +1036,12 @@ void CCharacter::Snap(int SnappingClient)
 	{
 		pCharacter->m_Emote = EMOTE_PAIN;
 	}
-	else if(IsZombie()) pCharacter->m_Emote = EMOTE_ANGRY;
-	else pCharacter->m_Emote = m_EmoteType;
+	else if(IsZombie()) 
+		pCharacter->m_Emote = EMOTE_ANGRY;
+	else if(IsInvisible())
+		pCharacter->m_Emote = EMOTE_BLINK;
+	else 
+		pCharacter->m_Emote = m_EmoteType;
 
 	pCharacter->m_AmmoCount = 0;
 	pCharacter->m_Health = 0;
@@ -1011,12 +1059,6 @@ void CCharacter::Snap(int SnappingClient)
 		pCharacter->m_Armor = m_Armor;
 		if(m_aWeapons[m_ActiveWeapon].m_Ammo > 0)
 			pCharacter->m_AmmoCount = m_aWeapons[m_ActiveWeapon].m_Ammo;
-	}
-
-	if(pCharacter->m_Emote == EMOTE_NORMAL)
-	{
-		if(250 - ((Server()->Tick() - m_LastAction)%(250)) < 5)
-			pCharacter->m_Emote = EMOTE_BLINK;
 	}
 
 	pCharacter->m_PlayerFlags = GetPlayer()->m_PlayerFlags;
@@ -1203,8 +1245,12 @@ int CCharacter::GetXoleWeaponID(int Weapon)
 	{
 		switch(GetRole())
 		{
+			case PLAYERROLE_MEDIC:
+				return XOLEWEAPON_MEDIC_HAMMER;
+				break;
 			default:
 				return XOLEWEAPON_HAMMER;
+				break;
 		}
 	}
 	else if(Weapon == WEAPON_GUN)
@@ -1213,14 +1259,19 @@ int CCharacter::GetXoleWeaponID(int Weapon)
 		{
 			default:
 				return XOLEWEAPON_GUN;
+				break;
 		}
 	}
 	else if(Weapon == WEAPON_SHOTGUN)
 	{
 		switch(GetRole())
 		{
+			case PLAYERROLE_MEDIC:
+				return XOLEWEAPON_MEDIC_SHOTGUN;
+				break;
 			default:
 				return XOLEWEAPON_SHOTGUN;
+				break;
 		}
 	}
 	else if(Weapon == WEAPON_GRENADE)
@@ -1229,28 +1280,42 @@ int CCharacter::GetXoleWeaponID(int Weapon)
 		{
 			default:
 				return XOLEWEAPON_GRENADE;
+				break;
 		}
 	}
 	else if(Weapon == WEAPON_RIFLE)
 	{
 		switch(GetRole())
 		{	
+			case PLAYERROLE_SNIPER:
+				return XOLEWEAPON_SNIPER_RIFLE;
+				break;
 			default:
 				return XOLEWEAPON_RIFLE;
+				break;
 		}
 	}
 	else if(Weapon == WEAPON_NINJA)
 	{
 		return XOLEWEAPON_NINJA;
 	}
+
+	return XOLEWEAPON_NONE;
 }
 
-bool CCharacter::IsRoleCanHookDamage()
+bool CCharacter::IsRoleCanHookDamage() const
 {
 	switch (GetRole())
 	{
-		case PLAYERROLE_SMOKER: return true ;break;
+		case PLAYERROLE_SMOKER: 
+			return true;
+			break;
 		default:return false;break;
 	}
+}
+
+bool CCharacter::IsInvisible() const
+{
+	return m_InvisibleTick > 0;
 }
 // XolePanic End

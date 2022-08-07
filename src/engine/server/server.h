@@ -254,6 +254,7 @@ public:
 	struct XoleWeaponStat
 	{
 		int m_AmmoRegenTime;
+		int m_FireDelay;
 		int m_MaxAmmo;
 	} m_aXoleWeapons[NUM_XOLEWEAPONS];
 	
@@ -267,8 +268,10 @@ public:
 	virtual void UnInfectClient(int ClientID);
 	virtual int GetWeaponMaxAmmo(int WID);
 	virtual int GetWeaponAmmoRegenTime(int WID);
+	virtual int GetWeaponFireDelay(int WID);
 	virtual void SetWeaponMaxAmmo(int WID, int MaxAmmo);
 	virtual void SetWeaponAmmoRegenTime(int WID, int RegenTime);
+	virtual void SetWeaponFireDelay(int WID, int Delay);
 };
 
 #endif

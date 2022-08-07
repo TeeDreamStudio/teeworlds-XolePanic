@@ -449,17 +449,42 @@ int CServer::Init()
 	m_CurrentGameTick = 0;
 
 	// XolePanic Start
+	SetWeaponFireDelay(XOLEWEAPON_NONE, 0);
+	SetWeaponFireDelay(XOLEWEAPON_HAMMER, 125);
+	SetWeaponFireDelay(XOLEWEAPON_GUN, 125);
+	SetWeaponFireDelay(XOLEWEAPON_SHOTGUN, 500);
+	SetWeaponFireDelay(XOLEWEAPON_GRENADE, 500);
+	SetWeaponFireDelay(XOLEWEAPON_RIFLE, 800);
+	SetWeaponFireDelay(XOLEWEAPON_NINJA, 800);
+
+	SetWeaponFireDelay(XOLEWEAPON_SNIPER_RIFLE, GetWeaponFireDelay(XOLEWEAPON_RIFLE));
+	SetWeaponFireDelay(XOLEWEAPON_MEDIC_HAMMER, 250);
+	SetWeaponFireDelay(XOLEWEAPON_MEDIC_SHOTGUN, 250);
+
+
+	SetWeaponMaxAmmo(XOLEWEAPON_NONE, -1);
 	SetWeaponMaxAmmo(XOLEWEAPON_HAMMER, -1);
 	SetWeaponMaxAmmo(XOLEWEAPON_GUN, 10);
 	SetWeaponMaxAmmo(XOLEWEAPON_SHOTGUN, 10);
 	SetWeaponMaxAmmo(XOLEWEAPON_GRENADE, 10);
 	SetWeaponMaxAmmo(XOLEWEAPON_RIFLE, 10);
 
+	SetWeaponMaxAmmo(XOLEWEAPON_SNIPER_RIFLE, 10);
+	SetWeaponMaxAmmo(XOLEWEAPON_MEDIC_HAMMER, -1);
+	SetWeaponMaxAmmo(XOLEWEAPON_MEDIC_SHOTGUN, 10);
+
+
+	SetWeaponAmmoRegenTime(XOLEWEAPON_NONE, 0);
 	SetWeaponAmmoRegenTime(XOLEWEAPON_HAMMER, 0);
-	SetWeaponAmmoRegenTime(XOLEWEAPON_GUN, 10);
-	SetWeaponAmmoRegenTime(XOLEWEAPON_SHOTGUN, 50);
-	SetWeaponAmmoRegenTime(XOLEWEAPON_GRENADE, 100);
-	SetWeaponAmmoRegenTime(XOLEWEAPON_RIFLE, 75);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_GUN, 500);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_SHOTGUN, 0);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_GRENADE, 0);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_RIFLE, 0);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_NINJA, 0);
+
+	SetWeaponAmmoRegenTime(XOLEWEAPON_SNIPER_RIFLE, 2000);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_MEDIC_HAMMER, 0);
+	SetWeaponAmmoRegenTime(XOLEWEAPON_MEDIC_SHOTGUN, 750);
 	// XolePanic End
 
 	return 0;
@@ -2077,6 +2102,11 @@ int CServer::GetWeaponAmmoRegenTime(int WID)
 	return m_aXoleWeapons[WID].m_AmmoRegenTime;
 }
 
+int CServer::GetWeaponFireDelay(int WID)
+{
+	return m_aXoleWeapons[WID].m_FireDelay;
+}
+
 void CServer::SetWeaponMaxAmmo(int WID, int MaxAmmo)
 {
 	m_aXoleWeapons[WID].m_MaxAmmo = MaxAmmo;
@@ -2085,4 +2115,9 @@ void CServer::SetWeaponMaxAmmo(int WID, int MaxAmmo)
 void CServer::SetWeaponAmmoRegenTime(int WID, int RegenTime)
 {
 	m_aXoleWeapons[WID].m_AmmoRegenTime = RegenTime;
+}
+
+void CServer::SetWeaponFireDelay(int WID, int Delay)
+{
+	m_aXoleWeapons[WID].m_FireDelay = Delay;
 }

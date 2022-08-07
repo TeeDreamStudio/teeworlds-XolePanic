@@ -17,6 +17,11 @@ enum
 	XOLEWEAPON_GRENADE,
 	XOLEWEAPON_RIFLE,
 	XOLEWEAPON_NINJA,
+	
+	XOLEWEAPON_SNIPER_RIFLE,
+	
+	XOLEWEAPON_MEDIC_HAMMER,
+	XOLEWEAPON_MEDIC_SHOTGUN,
 	NUM_XOLEWEAPONS,
 };
 
@@ -188,8 +193,10 @@ public:
 
 	virtual int GetWeaponMaxAmmo(int WID) = 0;
 	virtual int GetWeaponAmmoRegenTime(int WID) = 0;
+	virtual int GetWeaponFireDelay(int WID) = 0;
 	virtual void SetWeaponMaxAmmo(int WID, int MaxAmmo) = 0;
 	virtual void SetWeaponAmmoRegenTime(int WID, int RegenTime) = 0;
+	virtual void SetWeaponFireDelay(int WID, int Delay) = 0;
 };
 
 class IGameServer : public IInterface
