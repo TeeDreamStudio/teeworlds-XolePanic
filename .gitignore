@@ -19,8 +19,4 @@ src/game/generated
 /packetgen*
 /tileset_border*
 /versionsrv*
-/infclass_client*
-/infclass_srv*
-/infclass_editor*
-/bin/server_d
-/bin
+server_d
