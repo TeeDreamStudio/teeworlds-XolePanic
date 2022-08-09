@@ -699,12 +699,10 @@ void CCharacter::Tick()
 	if(m_InvisibleTick)
 	{
 		m_InvisibleTick--;
-		if(!(m_InvisibleTick%50))
-		{
-			int Time = m_InvisibleTick/50;
-			GameServer()->SendBroadcast_VL(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_REALTIME,
-				_("You are invisible: {sec:Time}"), "Time", &Time, NULL);
-		}
+		int Time = round_to_int(m_InvisibleTick/50.0f);
+		GameServer()->SendBroadcast_VL(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_GAMEANNOUNCE,
+			_("You are invisible: {sec:Time}"), "Time", &Time, NULL);
+		
 		if(!m_InvisibleTick)
 		{
 			m_IsInvisible = false;
