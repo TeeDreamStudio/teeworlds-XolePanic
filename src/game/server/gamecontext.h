@@ -48,6 +48,19 @@ typedef unsigned __int64 uint64_t;
 			All players (CPlayer::snap)
 
 */
+#define BROADCAST_DURATION_REALTIME (0)
+#define BROADCAST_DURATION_GAMEANNOUNCE (Server()->TickSpeed()*2)
+
+enum
+{
+	BROADCAST_PRIORITY_LOWEST=0,
+	BROADCAST_PRIORITY_WEAPONSTATE,
+	BROADCAST_PRIORITY_EFFECTSTATE,
+	BROADCAST_PRIORITY_GAMEANNOUNCE,
+	BROADCAST_PRIORITY_SERVERANNOUNCE,
+	BROADCAST_PRIORITY_INTERFACE,
+};
+
 class CGameContext : public IGameServer
 {
 	IServer *m_pServer;
@@ -92,6 +105,22 @@ public:
 public:
 	int m_ZoneHandle_TeeWorlds;
 	int m_ZoneHandle_Panic;
+
+	class CBroadcastState
+	{
+	public:
+		int m_NoChangeTick;
+		char m_PrevMessage[1024];
+		
+		int m_Priority;
+		char m_NextMessage[1024];
+		
+		int m_LifeSpanTick;
+		int m_TimedPriority;
+		char m_TimedMessage[1024];
+	};
+
+	CBroadcastState m_BroadcastStates[MAX_CLIENTS];
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
@@ -165,8 +194,11 @@ public:
 	void SendChat(int ClientID, int Team, const char *pText);
 	void SendEmoticon(int ClientID, int Emoticon);
 	void SendWeaponPickup(int ClientID, int Weapon);
-	void SendBroadcast(const char *pText, int ClientID);
-	void SendBroadcast_VL(const char *pText, int ClientID, ...);
+	void SendBroadcast(int To, const char *pText, int Priority, int LifeSpan);
+	void SendBroadcast_VL(int To, int Priority, int LifeSpan, const char* pText, ...);
+	void ClearBroadcast(int To, int Priority);
+	void AddBroadcast(int ClientID, const char* pText, int Priority, int LifeSpan);
+	
 	void SetClientLanguage(int ClientID, const char *pLanguage);
 
 

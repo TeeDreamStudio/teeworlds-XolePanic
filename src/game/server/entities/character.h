@@ -157,7 +157,6 @@ public:
 	void UpdateTuningParam();
 	int m_AirJumpCounter;
 	int m_HelpTick;
-	bool m_CanSwitchRole;
 
 	bool IsRoleCanHookDamage() const;
 	bool IsInvisible() const;

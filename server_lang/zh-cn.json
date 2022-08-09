@@ -169,8 +169,12 @@
             "value": "人类的目标是保护安全区"
         },
         {
-            "key": "=====RoleChooser=====",
+            "key": "=====RoleChoose=====",
             "value": "=====角色选择器====="
+        },
+        {
+            "key":"Use <Mouse wheel> To switch role",
+            "value": "使用 <鼠标滚轮> 来切换角色"
         },
         {
             "key": "Medic",

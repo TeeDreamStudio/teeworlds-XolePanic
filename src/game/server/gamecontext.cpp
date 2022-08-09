@@ -12,6 +12,8 @@
 #include <string>
 #include <teeuniverses/components/localization.h>
 
+#include <base/tl/array.h>
+
 #include "xole-panic/xole-panic.h"
 
 enum
@@ -87,6 +89,15 @@ void CGameContext::Clear()
 	m_pVoteOptionLast = pVoteOptionLast;
 	m_NumVoteOptions = NumVoteOptions;
 	m_Tuning = Tuning;
+	
+	for(int i=0; i<MAX_CLIENTS; i++)
+	{
+		m_BroadcastStates[i].m_NoChangeTick = 0;
+		m_BroadcastStates[i].m_LifeSpanTick = 0;
+		m_BroadcastStates[i].m_Priority = BROADCAST_PRIORITY_LOWEST;
+		m_BroadcastStates[i].m_PrevMessage[0] = 0;
+		m_BroadcastStates[i].m_NextMessage[0] = 0;
+	}
 }
 
 
@@ -320,19 +331,56 @@ void CGameContext::SendWeaponPickup(int ClientID, int Weapon)
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientID);
 }
 
-
-void CGameContext::SendBroadcast(const char *pText, int ClientID)
+void CGameContext::AddBroadcast(int ClientID, const char* pText, int Priority, int LifeSpan)
 {
-	CNetMsg_Sv_Broadcast Msg;
-	Msg.m_pMessage = pText;
-	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientID);
+	if(LifeSpan > 0)
+	{
+		if(m_BroadcastStates[ClientID].m_TimedPriority > Priority)
+			return;
+			
+		str_copy(m_BroadcastStates[ClientID].m_TimedMessage, pText, sizeof(m_BroadcastStates[ClientID].m_TimedMessage));
+		m_BroadcastStates[ClientID].m_LifeSpanTick = LifeSpan;
+		m_BroadcastStates[ClientID].m_TimedPriority = Priority;
+	}
+	else
+	{
+		if(m_BroadcastStates[ClientID].m_Priority > Priority)
+			return;
+			
+		str_copy(m_BroadcastStates[ClientID].m_NextMessage, pText, sizeof(m_BroadcastStates[ClientID].m_NextMessage));
+		m_BroadcastStates[ClientID].m_Priority = Priority;
+	}
 }
 
-void CGameContext::SendBroadcast_VL(const char *pText, int ClientID, ...)
+void CGameContext::SendBroadcast(int To, const char *pText, int Priority, int LifeSpan)
 {
-	CNetMsg_Sv_Broadcast Msg;
-	int Start = (ClientID < 0 ? 0 : ClientID);
-	int End = (ClientID < 0 ? MAX_CLIENTS : ClientID+1);
+	int Start = (To < 0 ? 0 : To);
+	int End = (To < 0 ? MAX_CLIENTS : To+1);
+	
+	// only for server demo record
+	if(To < 0)
+	{
+		CNetMsg_Sv_Broadcast Msg;
+		Msg.m_pMessage = pText;
+		Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NOSEND, -1);
+	}
+
+	for(int i = Start; i < End; i++)
+	{
+		if(m_apPlayers[i])
+			AddBroadcast(i, pText, Priority, LifeSpan);
+	}
+}
+
+void CGameContext::ClearBroadcast(int To, int Priority)
+{
+	SendBroadcast(To, "", Priority, BROADCAST_DURATION_REALTIME);
+}
+
+void CGameContext::SendBroadcast_VL(int To, int Priority, int LifeSpan, const char* pText, ...)
+{
+	int Start = (To < 0 ? 0 : To);
+	int End = (To < 0 ? MAX_CLIENTS : To+1);
 	
 	dynamic_string Buffer;
 	
@@ -340,9 +388,10 @@ void CGameContext::SendBroadcast_VL(const char *pText, int ClientID, ...)
 	va_start(VarArgs, pText);
 	
 	// only for server demo record
-	if(ClientID < 0)
+	if(To < 0)
 	{
-		Server()->Localization()->Format_VL(Buffer, "en", _(pText), VarArgs);
+		CNetMsg_Sv_Broadcast Msg;
+		Server()->Localization()->Format_VL(Buffer, "en", pText, VarArgs);
 		Msg.m_pMessage = Buffer.buffer();
 		Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NOSEND, -1);
 	}
@@ -352,11 +401,8 @@ void CGameContext::SendBroadcast_VL(const char *pText, int ClientID, ...)
 		if(m_apPlayers[i])
 		{
 			Buffer.clear();
-			Server()->Localization()->Format_VL(Buffer, m_apPlayers[i]->GetLanguage(), _(pText), VarArgs);
-			
-			Msg.m_pMessage = Buffer.buffer();
-			Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, i);
-			
+			Server()->Localization()->Format_VL(Buffer, m_apPlayers[i]->GetLanguage(), pText, VarArgs);
+			AddBroadcast(i, Buffer.buffer(), Priority, LifeSpan);
 		}
 	}
 	
@@ -509,8 +555,60 @@ void CGameContext::OnTick()
 	}else if(HadZombieInSafeZone && !m_HasZombieInSafeZone)
 	{
 		m_SafeZoneTick = 0;
-		SendBroadcast("", -1);
+		ClearBroadcast(-1, BROADCAST_PRIORITY_EFFECTSTATE);
 	}
+
+	//Check for new broadcast
+	for(int i=0; i<MAX_CLIENTS; i++)
+	{
+		if(m_apPlayers[i])
+		{
+			if(m_BroadcastStates[i].m_LifeSpanTick > 0 && m_BroadcastStates[i].m_TimedPriority > m_BroadcastStates[i].m_Priority)
+			{
+				str_copy(m_BroadcastStates[i].m_NextMessage, m_BroadcastStates[i].m_TimedMessage, sizeof(m_BroadcastStates[i].m_NextMessage));
+			}
+			
+			//Send broadcast only if the message is different, or to fight auto-fading
+			if(
+				str_comp(m_BroadcastStates[i].m_PrevMessage, m_BroadcastStates[i].m_NextMessage) != 0 ||
+				m_BroadcastStates[i].m_NoChangeTick > Server()->TickSpeed()
+			)
+			{
+				CNetMsg_Sv_Broadcast Msg;
+				Msg.m_pMessage = m_BroadcastStates[i].m_NextMessage;
+				Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NORECORD, i);
+				
+				str_copy(m_BroadcastStates[i].m_PrevMessage, m_BroadcastStates[i].m_NextMessage, sizeof(m_BroadcastStates[i].m_PrevMessage));
+				
+				m_BroadcastStates[i].m_NoChangeTick = 0;
+			}
+			else
+				m_BroadcastStates[i].m_NoChangeTick++;
+			
+			//Update broadcast state
+			if(m_BroadcastStates[i].m_LifeSpanTick > 0)
+				m_BroadcastStates[i].m_LifeSpanTick--;
+			
+			if(m_BroadcastStates[i].m_LifeSpanTick <= 0)
+			{
+				m_BroadcastStates[i].m_TimedMessage[0] = 0;
+				m_BroadcastStates[i].m_TimedPriority = BROADCAST_PRIORITY_LOWEST;
+			}
+			m_BroadcastStates[i].m_NextMessage[0] = 0;
+			m_BroadcastStates[i].m_Priority = BROADCAST_PRIORITY_LOWEST;
+		}
+		else
+		{
+			m_BroadcastStates[i].m_NoChangeTick = 0;
+			m_BroadcastStates[i].m_LifeSpanTick = 0;
+			m_BroadcastStates[i].m_Priority = BROADCAST_PRIORITY_LOWEST;
+			m_BroadcastStates[i].m_TimedPriority = BROADCAST_PRIORITY_LOWEST;
+			m_BroadcastStates[i].m_PrevMessage[0] = 0;
+			m_BroadcastStates[i].m_NextMessage[0] = 0;
+			m_BroadcastStates[i].m_TimedMessage[0] = 0;
+		}
+	}
+
 
 	// update voting
 	if(m_VoteCloseTime)
@@ -669,6 +767,13 @@ void CGameContext::OnClientConnected(int ClientID)
 	CNetMsg_Sv_Motd Msg;
 	Msg.m_pMessage = g_Config.m_SvMotd;
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientID);
+	
+	m_BroadcastStates[ClientID].m_NoChangeTick = 0;
+	m_BroadcastStates[ClientID].m_LifeSpanTick = 0;
+	m_BroadcastStates[ClientID].m_Priority = BROADCAST_PRIORITY_LOWEST;
+	m_BroadcastStates[ClientID].m_PrevMessage[0] = 0;
+	m_BroadcastStates[ClientID].m_NextMessage[0] = 0;
+	CountPlayer();
 }
 
 void CGameContext::OnClientDrop(int ClientID, const char *pReason)
@@ -951,37 +1056,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				pPlayer->m_Vote = pMsg->m_Vote;
 				pPlayer->m_VotePos = ++m_VotePos;
 				m_VoteUpdate = true;
-			}else if(pPlayer->GetCharacter() && pPlayer->GetCharacter()->m_CanSwitchRole)
-			{
-				int Mask = CmaskAllExceptOne(pPlayer->GetCID());
-				int Start = (pPlayer->IsZombie() ? START_ZOMBIEROLE : START_HUMANROLE ) + 1;
-				int End = (pPlayer->IsZombie() ? END_ZOMBIEROLE : END_HUMANROLE ) - 1;
-				if(pMsg->m_Vote == 1)
-				{
-					if(pPlayer->GetRole() == Start)
-					{
-						pPlayer->SetRole(End);
-						SendRoleChooser(pPlayer->GetCID());
-					}
-					else
-					{
-						pPlayer->SetRole(pPlayer->GetRole()-1);
-						SendRoleChooser(pPlayer->GetCID());
-					}
-				}else if(pMsg->m_Vote == -1)
-				{
-					if(pPlayer->GetRole() == End)
-					{
-						pPlayer->SetRole(Start);
-						SendRoleChooser(pPlayer->GetCID());
-					}
-					else
-					{
-						pPlayer->SetRole(pPlayer->GetRole()+1);
-						SendRoleChooser(pPlayer->GetCID());
-					}
-				}
-				CreateSound(pPlayer->GetCharacter()->m_Pos, SOUND_WEAPON_SWITCH, Mask);
 			}
 		}
 		else if (MsgID == NETMSGTYPE_CL_SETTEAM && !m_World.m_Paused)
@@ -994,7 +1068,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			if(pMsg->m_Team != TEAM_SPECTATORS && m_LockTeams)
 			{
 				pPlayer->m_LastSetTeam = Server()->Tick();
-				SendBroadcast_VL(_("Teams are locked"), ClientID);
 				return;
 			}
 
@@ -1002,7 +1075,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			{
 				pPlayer->m_LastSetTeam = Server()->Tick();
 				int TimeLeft = (pPlayer->m_TeamChangeTick - Server()->Tick())/Server()->TickSpeed();
-				SendBroadcast_VL(_("Time to wait before changing team: {sec:Time}"), ClientID, "Time", TimeLeft);
 				return;
 			}
 
@@ -1018,12 +1090,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					(void)m_pController->CheckTeamBalance();
 					pPlayer->m_TeamChangeTick = Server()->Tick();
 				}
-				else
-					SendBroadcast_VL(_("Teams must be balanced, please join other team"), ClientID);
-			}
-			else
-			{
-				SendBroadcast_VL(_("Only {str:ID} active players are allowed"), ClientID, "ID", ClientID);
 			}
 		}
 		else if (MsgID == NETMSGTYPE_CL_SETSPECTATORMODE && !m_World.m_Paused)
@@ -1253,7 +1319,7 @@ void CGameContext::ConRestart(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConBroadcast(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->SendBroadcast(pResult->GetString(0), -1);
+	pSelf->SendBroadcast(-1, pResult->GetString(0), BROADCAST_PRIORITY_SERVERANNOUNCE, pSelf->Server()->TickSpeed()*3);
 }
 
 void CGameContext::ConSay(IConsole::IResult *pResult, void *pUserData)
@@ -1938,24 +2004,20 @@ void CGameContext::SendRoleChooser(int To)
 	}
 
 	const char *pLanguageCode = pPlayer->GetLanguage();
-
-	Buffer.append(Server()->Localization()->Localize(pLanguageCode, "=====RoleChooser====="));
+	const char *MenuName = Server()->Localization()->Localize(pLanguageCode, "=====RoleChoose=====");
+	Buffer.append(MenuName);
 	Buffer.append("\n");
 
 	if(pPlayer->IsZombie())
 	{
 		for(int i = START_ZOMBIEROLE + 1; i < END_ZOMBIEROLE; i++)
 		{
+			const char *pName = Server()->Localization()->Localize(pLanguageCode, GetRoleName(i));
+			
+				Buffer.append(pName);
 			if(pPlayer->GetRole() == i)
 			{
-				Buffer.append("[ ");
-				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
-				Buffer.append(" ]");
-			}else
-			{
-				Buffer.append("   ");
-				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
-				Buffer.append("   ");
+				Buffer.append(" <-----");
 			}
 			Buffer.append("\n");
 		}
@@ -1964,21 +2026,18 @@ void CGameContext::SendRoleChooser(int To)
 	{
 		for(int i = START_HUMANROLE + 1; i < END_HUMANROLE; i++)
 		{
+			const char *pName = Server()->Localization()->Localize(pLanguageCode, GetRoleName(i));
+			
+				Buffer.append(pName);
 			if(pPlayer->GetRole() == i)
 			{
-				Buffer.append("[ ");
-				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
-				Buffer.append(" ]");
-			}else
-			{
-				Buffer.append("   ");
-				Buffer.append(Server()->Localization()->Localize(pLanguageCode, GetRoleName(i)));
-				Buffer.append("   ");
+				Buffer.append(" <-----");
 			}
 			Buffer.append("\n");
 		}
 	}
-	SendMotd(To, Buffer.c_str());
+	Buffer.append(Server()->Localization()->Localize(pLanguageCode, "Use <Mouse wheel> To switch role"));
+	SendBroadcast(To, Buffer.c_str(), BROADCAST_PRIORITY_WEAPONSTATE, 75);
 }
 
 void CGameContext::CountPlayer()
@@ -2011,7 +2070,7 @@ void CGameContext::SendWarning()
 		{
 			if(m_apPlayers[i]->IsHuman())
 			{
-				SendBroadcast_VL(_("Waring!!!Safe Zone has zombie!!!\nLife Time: {sec:Time}"), i, "Time", &Second, NULL);
+				SendBroadcast_VL(i, BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_REALTIME, _("Waring!!!Safe Zone has zombie!!!\nLife Time: {sec:Time}"),"Time", &Second, NULL);
 			}
 		}
 	}

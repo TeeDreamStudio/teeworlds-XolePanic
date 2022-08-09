@@ -393,8 +393,6 @@ void CPlayer::SetRole(int Role)
 	GameServer()->CountPlayer();
 	if(m_pCharacter)
 	{
-		if(m_pCharacter->m_CanSwitchRole)
-			GameServer()->SendRoleChooser(m_ClientID);
 		m_pCharacter->GiveRoleWeapon();
 	}
 }

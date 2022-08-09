@@ -132,10 +132,13 @@ public:
 	void SetRole(int Role);
 	void StartInfection(bool Die=false);
 	void SetRoleSkin(int Role);
+	bool GetSwitchRoleState() const { return m_SwitchRoleState;}
+	void SetSwitchRoleState(bool State) { m_SwitchRoleState = State;}
 
 private:
 	int m_Role;
 	int m_ChoosedRole;
+	bool m_SwitchRoleState;
 // XolePanic End
 
 public:

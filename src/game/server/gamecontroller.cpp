@@ -43,7 +43,7 @@ bool IGameController::PreSpawn(CPlayer* pPlayer, vec2 *pOutPos)
 	if(Team == TEAM_SPECTATORS)
 		return false;
 
-	int Type = (pPlayer->IsZombie() ? TEAM_RED : TEAM_BLUE);
+	int Type = (pPlayer->IsZombie() ? TEAM_BLUE : TEAM_RED);
 
 	// get spawn point
 	for(int i = 0; i < m_SpawnPoints[Type].size(); i++)
@@ -122,22 +122,6 @@ void IGameController::StartRound()
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags&GAMEFLAG_TEAMS);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
-
-	for(int i=0;i < MAX_CLIENTS;i ++)
-	{
-		CPlayer *pPlayer = GameServer()->m_apPlayers[i];
-		if(pPlayer)
-		{
-			if(pPlayer->GetCharacter())
-			{
-				pPlayer->GetCharacter()->m_CanSwitchRole = true;
-			}
-			pPlayer->SetRole(PLAYERROLE_MEDIC);
-			pPlayer->m_Score = 0;
-		}
-	}
-
-	GameServer()->CountPlayer();
 }
 
 void IGameController::ChangeMap(const char *pToMap)

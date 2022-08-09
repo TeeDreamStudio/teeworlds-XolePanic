@@ -69,7 +69,6 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_HelpTick = 0;
 	m_WillDie = false;
 	m_InInfectZone = false;
-	m_CanSwitchRole = true;
 	m_InvisibleTick = 0;
 	m_VisibleTick = 0;
 	m_IsInvisible = false;
@@ -230,6 +229,41 @@ void CCharacter::HandleWeaponSwitch()
 	int Next = CountInput(m_LatestPrevInput.m_NextWeapon, m_LatestInput.m_NextWeapon).m_Presses;
 	int Prev = CountInput(m_LatestPrevInput.m_PrevWeapon, m_LatestInput.m_PrevWeapon).m_Presses;
 
+	if(m_pPlayer->GetSwitchRoleState())
+	{
+		int Start = (IsZombie() ? START_ZOMBIEROLE : START_HUMANROLE ) + 1;
+		int End = (IsZombie() ? END_ZOMBIEROLE : END_HUMANROLE ) - 1;
+		if(Prev && Prev < 128)
+		{
+			if(GetRole() == Start)
+			{
+				m_pPlayer->SetRole(End);
+				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
+				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+			}
+			else
+			{
+				m_pPlayer->SetRole(GetRole()-1);
+				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
+				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+			}
+		}else if(Next && Next < 128)
+		{
+			if(GetRole() == End)
+			{
+				m_pPlayer->SetRole(Start);
+				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
+				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+			}
+			else
+			{
+				m_pPlayer->SetRole(GetRole()+1);
+				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
+				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+			}
+		}
+		return;
+	}
 	if(Next < 128) // make sure we only try sane stuff
 	{
 		while(Next) // Next Weapon selection
@@ -318,12 +352,12 @@ void CCharacter::FireWeapon()
 					{
 						m_InvisibleTick = g_Config.m_XoleSniperInvisibleSec * 50;
 						int Time = m_InvisibleTick/50;
-						GameServer()->SendBroadcast_VL(_("You are invisible: {sec:Time}"), m_pPlayer->GetCID(), "Time", &Time, NULL);
+						GameServer()->SendBroadcast_VL(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_REALTIME,_("You are invisible: {sec:Time}"), "Time", &Time, NULL);
 					}else 
 					{
 						m_InvisibleTick = 0;
 						m_VisibleTick = Server()->Tick();
-						GameServer()->SendBroadcast("", m_pPlayer->GetCID());
+						GameServer()->ClearBroadcast(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE);
 					}
 				}
 				GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE);
@@ -629,14 +663,6 @@ void CCharacter::ResetInput()
 
 void CCharacter::Tick()
 {
-	if(m_pPlayer->m_ForceBalanced)
-	{
-		char Buf[128];
-		str_format(Buf, sizeof(Buf), "You were moved to %s due to team balancing", GameServer()->m_pController->GetTeamName(m_pPlayer->GetTeam()));
-		GameServer()->SendBroadcast(Buf, m_pPlayer->GetCID());
-
-		m_pPlayer->m_ForceBalanced = false;
-	}
 
 	if(m_WillDie)
 	{
@@ -653,7 +679,8 @@ void CCharacter::Tick()
 			m_Input.m_TargetX = 0;
 			m_Input.m_TargetY = 0;
 			m_Input.m_Hook = 0;
-			GameServer()->SendBroadcast_VL(_("If no medics to help You.\nYou will die in {sec:Time}"), m_pPlayer->GetCID(), "Time", &Second);
+			GameServer()->SendBroadcast_VL(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_GAMEANNOUNCE
+				, _("If no medics to help You.\nYou will die in {sec:Time}"), "Time", &Second, NULL);
 		}else
 		{
 			m_pPlayer->StartInfection();
@@ -666,7 +693,7 @@ void CCharacter::Tick()
 
 	if(GameServer()->m_pController->IsInfectionStarted() && IsHuman())
 	{
-		m_CanSwitchRole = false;
+		m_pPlayer->SetSwitchRoleState(0);
 	}
 
 	if(m_InvisibleTick)
@@ -675,13 +702,14 @@ void CCharacter::Tick()
 		if(!(m_InvisibleTick%50))
 		{
 			int Time = m_InvisibleTick/50;
-			GameServer()->SendBroadcast_VL(_("You are invisible: {sec:Time}"), m_pPlayer->GetCID(), "Time", &Time, NULL);
+			GameServer()->SendBroadcast_VL(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE, BROADCAST_DURATION_REALTIME,
+				_("You are invisible: {sec:Time}"), "Time", &Time, NULL);
 		}
 		if(!m_InvisibleTick)
 		{
 			m_IsInvisible = false;
 			m_VisibleTick = Server()->Tick();
-			GameServer()->SendBroadcast("", m_pPlayer->GetCID());
+			GameServer()->ClearBroadcast(m_pPlayer->GetCID(), BROADCAST_PRIORITY_WEAPONSTATE);
 		}
 	}
 
@@ -1147,7 +1175,6 @@ void CCharacter::GiveRoleWeapon()
 			m_ActiveWeapon = WEAPON_HAMMER;
 			break;
 	}
-	GameServer()->SendBroadcast_VL(_(GameServer()->GetRoleName(GetRole())), m_pPlayer->GetCID());
 }
 
 void CCharacter::HandleZone()
@@ -1173,39 +1200,32 @@ void CCharacter::HandleZone()
 	}
 	// handle Teeuniverse Zone
 	int Index = GameServer()->Collision()->GetZoneValueAt(GameServer()->m_ZoneHandle_Panic, m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f);
-
-	// handle safe zone
-	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_SAFEZONE
-		|| Index == ZONE_PANIC_SAFE_ZONE)
 	{
-		if(!(GameServer()->m_HasZombieInSafeZone) && IsZombie())
+		// handle safe zone
+		if(Index == ZONE_PANIC_SAFE_ZONE)
 		{
-			GameServer()->m_HasZombieInSafeZone = true;
+			if(!(GameServer()->m_HasZombieInSafeZone) && IsZombie())
+			{
+				GameServer()->m_HasZombieInSafeZone = true;
+			}
 		}
-	}
-	// handle infect zone
-	if(GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x+m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y-m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE ||
-		GameServer()->Collision()->GetCollisionAt(m_Pos.x-m_ProximityRadius/3.f, m_Pos.y+m_ProximityRadius/3.f)&CCollision::COLFLAG_INFECTZONE
-		|| Index == ZONE_PANIC_INFECT_ZONE)
-	{
-		if(IsHuman())
+		// handle infect zone
+		else if(Index == ZONE_PANIC_INFECT_ZONE)
 		{
-			m_pPlayer->StartInfection();
-		}
-		m_InInfectZone = true;
-		m_CanSwitchRole = true;
-	}else 
-	{
-		if(IsZombie())
+			if(IsHuman())
+			{
+				m_pPlayer->StartInfection();
+			}
+			m_InInfectZone = true;
+			m_pPlayer->SetSwitchRoleState(1);
+		}else 
 		{
-			m_CanSwitchRole = false;
+			if(IsZombie())
+			{
+				m_pPlayer->SetSwitchRoleState(0);
+			}
+			m_InInfectZone = false;
 		}
-		m_InInfectZone = false;
 	}
 }
 

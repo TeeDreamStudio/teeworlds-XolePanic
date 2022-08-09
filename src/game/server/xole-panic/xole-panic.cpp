@@ -22,7 +22,7 @@ void CGameControllerXole::Tick()
 {
 	if(GameServer()->m_NumPlayers < 2)
 	{
-		m_RoundStartTick = Server()->Tick();
+		m_RoundStartTick++;
 	}
 	DoWincheck();
 	IGameController::Tick();
@@ -63,12 +63,25 @@ void CGameControllerXole::DoWincheck()
 
 void CGameControllerXole::StartRound()
 {
+
+	for(int i=0;i < MAX_CLIENTS;i ++)
+	{
+		CPlayer *pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer)
+		{
+			pPlayer->SetSwitchRoleState(1);	
+			pPlayer->SetRole(PLAYERROLE_MEDIC);
+			pPlayer->m_Score = 0;
+		}
+	}
+
 	GameServer()->CountPlayer();
 	IGameController::StartRound();
 }
 
 void CGameControllerXole::OnCharacterSpawn(class CCharacter *pChr)
 {
+	pChr->GetPlayer()->SetSwitchRoleState(1);
 	GameServer()->SendRoleChooser(pChr->GetPlayer()->GetCID());
 	// default health
 	pChr->IncreaseHealth(10);
