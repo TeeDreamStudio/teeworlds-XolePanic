@@ -20,12 +20,12 @@ CGameControllerXole::CGameControllerXole(class CGameContext *pGameServer)
 
 void CGameControllerXole::Tick()
 {
+	IGameController::Tick();
 	if(GameServer()->m_NumPlayers < 2)
 	{
 		m_RoundStartTick++;
 	}
 	DoWincheck();
-	IGameController::Tick();
 	return;
 }
 
@@ -59,24 +59,6 @@ void CGameControllerXole::DoWincheck()
 			}
 		}
 	}
-}
-
-void CGameControllerXole::StartRound()
-{
-
-	for(int i=0;i < MAX_CLIENTS;i ++)
-	{
-		CPlayer *pPlayer = GameServer()->m_apPlayers[i];
-		if(pPlayer)
-		{
-			pPlayer->SetSwitchRoleState(1);	
-			pPlayer->SetRole(PLAYERROLE_MEDIC);
-			pPlayer->m_Score = 0;
-		}
-	}
-
-	GameServer()->CountPlayer();
-	IGameController::StartRound();
 }
 
 void CGameControllerXole::OnCharacterSpawn(class CCharacter *pChr)

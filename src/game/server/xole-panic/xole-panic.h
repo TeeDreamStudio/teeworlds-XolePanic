@@ -14,7 +14,6 @@ public:
 	virtual void Tick();
 	virtual void DoWincheck();
 	virtual void OnCharacterSpawn(class CCharacter *pChr);
-	virtual void StartRound();
 
 	void GetFristInfectNum();
 	void DoFairInfection();

@@ -122,6 +122,19 @@ void IGameController::StartRound()
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags&GAMEFLAG_TEAMS);
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
+
+	for(int i=0;i < MAX_CLIENTS;i ++)
+	{
+		CPlayer *pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer)
+		{
+			pPlayer->SetSwitchRoleState(1);	
+			pPlayer->SetRole(PLAYERROLE_MEDIC);
+			pPlayer->m_Score = 0;
+		}
+	}
+
+	GameServer()->CountPlayer();
 }
 
 void IGameController::ChangeMap(const char *pToMap)
