@@ -403,6 +403,7 @@ void CPlayer::StartInfection(bool Die)
 	if(m_pCharacter)
 	{
 		GameServer()->CreatePlayerSpawn(m_pCharacter->m_Pos);
+		m_pCharacter->DestroyChrEntity();
 		if(Die)
 		{
 			m_pCharacter->Die(-1, WEAPON_GAME);

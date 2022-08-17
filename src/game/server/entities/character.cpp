@@ -1365,11 +1365,11 @@ bool CCharacter::IsInvisible() const
 
 void CCharacter::DestroyChrEntity()
 {
-	for(CBuilding *pWall = (CBuilding *)GameWorld()->FindFirst(CGameWorld::ENTTYPE_BUILDING); 
-			pWall; pWall = (CBuilding *)pWall->TypeNext())
+	for(CBuilding *pBuild = (CBuilding *)GameWorld()->FindFirst(CGameWorld::ENTTYPE_BUILDING); 
+			pBuild; pBuild = (CBuilding *)pBuild->TypeNext())
 	{
-		if(pWall->m_Owner != m_pPlayer->GetCID())continue;
-		GameServer()->m_World.DestroyEntity(pWall);
+		if(pBuild->m_Owner != m_pPlayer->GetCID())continue;
+		GameServer()->m_World.DestroyEntity(pBuild);
 	}
 }
 // XolePanic End
