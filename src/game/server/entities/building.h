@@ -14,8 +14,8 @@ public:
     ~CBuilding();
 
     virtual void Tick();
-    virtual void Build(CCharacter *pChr);
-    virtual void Destroy(CCharacter *pChr);
+    void Build(CCharacter *pChr);
+    void Destroy(CCharacter *pChr);
 	virtual void Snap(int SnappingClient);
     int m_Owner;
 private:

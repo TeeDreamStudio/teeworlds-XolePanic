@@ -468,6 +468,8 @@ int CServer::Init()
 	SetWeaponFireDelay(XOLEWEAPON_MEDIC_HAMMER, 250);
 	SetWeaponFireDelay(XOLEWEAPON_MEDIC_SHOTGUN, 250);
 
+	SetWeaponFireDelay(XOLEWEAPON_BUILDER_SHOTGUN, 250);
+
 
 	SetWeaponMaxAmmo(XOLEWEAPON_NONE, -1);
 	SetWeaponMaxAmmo(XOLEWEAPON_HAMMER, -1);
@@ -479,6 +481,8 @@ int CServer::Init()
 	SetWeaponMaxAmmo(XOLEWEAPON_SNIPER_RIFLE, 10);
 	SetWeaponMaxAmmo(XOLEWEAPON_MEDIC_HAMMER, -1);
 	SetWeaponMaxAmmo(XOLEWEAPON_MEDIC_SHOTGUN, 10);
+
+	SetWeaponMaxAmmo(XOLEWEAPON_BUILDER_SHOTGUN, 10);
 
 
 	SetWeaponAmmoRegenTime(XOLEWEAPON_NONE, 0);
@@ -492,6 +496,8 @@ int CServer::Init()
 	SetWeaponAmmoRegenTime(XOLEWEAPON_SNIPER_RIFLE, 2000);
 	SetWeaponAmmoRegenTime(XOLEWEAPON_MEDIC_HAMMER, 0);
 	SetWeaponAmmoRegenTime(XOLEWEAPON_MEDIC_SHOTGUN, 750);
+
+	SetWeaponAmmoRegenTime(XOLEWEAPON_BUILDER_SHOTGUN, 750);
 	// XolePanic End
 
 	return 0;

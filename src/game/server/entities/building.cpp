@@ -87,16 +87,16 @@ void CBuilding::Tick()
     {
         case BUILDTYPE_WALL:
             CCharacter *apEnts[MAX_CLIENTS];
-            int Num = FindCharacters(m_aPos[1], m_aPos[0], 8.0f, apEnts, MAX_CLIENTS);
+            int Num = FindCharacters(m_aPos[1], m_aPos[0], 16.0f, apEnts, MAX_CLIENTS);
             for(int i = 0; i < Num; i++)
             {
                 if(apEnts[i]->GetPlayer()->IsZombie())
                 {
                     vec2 IntersectPos = closest_point_on_line(m_aPos[0], m_aPos[1], apEnts[i]->m_Pos);
                     float Len = distance(apEnts[i]->m_Pos, IntersectPos);
-                    if(Len < apEnts[i]->m_ProximityRadius+2.0f)
+                    if(Len < apEnts[i]->m_ProximityRadius+1.0f)
                     {
-                        apEnts[i]->m_Core.m_Vel = -apEnts[i]->m_Core.m_Vel;
+                        apEnts[i]->m_Core.m_Vel = vec2(0,0);
                         apEnts[i]->m_Core.m_Pos = apEnts[i]->m_OldPos;
                     }
                     Destroy(apEnts[i]);

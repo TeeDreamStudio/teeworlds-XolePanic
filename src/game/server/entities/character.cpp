@@ -100,7 +100,6 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 
 void CCharacter::Destroy()
 {
-	DestroyChrEntity();
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	m_Alive = false;
 }
@@ -907,6 +906,7 @@ void CCharacter::Die(int Killer, int Weapon)
 	{
 		m_pPlayer->StartInfection();
 	}
+	DestroyChrEntity();
 
 	GameServer()->CountPlayer();
 
