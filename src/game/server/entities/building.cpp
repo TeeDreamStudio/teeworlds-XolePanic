@@ -99,6 +99,7 @@ void CBuilding::Tick()
                         apEnts[i]->m_Core.m_Vel = -apEnts[i]->m_Core.m_Vel;
                         apEnts[i]->m_Core.m_Pos = apEnts[i]->m_OldPos;
                     }
+                    Destroy(apEnts[i]);
                 }else if(apEnts[i]->GetRole() == PLAYERROLE_BUILDER && apEnts[i]->m_ActiveWeapon == WEAPON_HAMMER)
                 {
                     Build(apEnts[i]);

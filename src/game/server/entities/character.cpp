@@ -244,12 +244,14 @@ void CCharacter::HandleWeaponSwitch()
 				m_pPlayer->SetRole(End);
 				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
 				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+				DestroyChrEntity();
 			}
 			else
 			{
 				m_pPlayer->SetRole(GetRole()-1);
 				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
 				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+				DestroyChrEntity();
 			}
 		}else if(Next && Next < 128)
 		{
@@ -258,12 +260,14 @@ void CCharacter::HandleWeaponSwitch()
 				m_pPlayer->SetRole(Start);
 				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
 				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+				DestroyChrEntity();
 			}
 			else
 			{
 				m_pPlayer->SetRole(GetRole()+1);
 				GameServer()->SendRoleChooser(m_pPlayer->GetCID());
 				GameServer()->CreateSoundGlobal(SOUND_WEAPON_SWITCH, m_pPlayer->GetCID());
+				DestroyChrEntity();
 			}
 		}
 		return;

@@ -393,7 +393,6 @@ void CPlayer::SetRole(int Role)
 	GameServer()->CountPlayer();
 	if(m_pCharacter)
 	{
-		m_pCharacter->DestroyChrEntity();
 		m_pCharacter->GiveRoleWeapon();
 	}
 }
