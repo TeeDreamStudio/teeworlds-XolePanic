@@ -69,7 +69,7 @@ void CBuilding::Destroy(CCharacter *pChr)
         int Damage;
         if(pChr->GetRole() == PLAYERROLE_PICKER)
         {
-            Damage = 30;
+            Damage = 50;
         }else Damage = 20;
         m_Health = max(m_Health-Damage, 0);
         pChr->m_LastBuildTick = Server()->Tick();
@@ -87,7 +87,7 @@ void CBuilding::Tick()
     {
         case BUILDTYPE_WALL:
             CCharacter *apEnts[MAX_CLIENTS];
-            int Num = FindCharacters(m_aPos[1], m_aPos[0], 2.5f, apEnts, MAX_CLIENTS);
+            int Num = FindCharacters(m_aPos[1], m_aPos[0], 8.0f, apEnts, MAX_CLIENTS);
             for(int i = 0; i < Num; i++)
             {
                 if(apEnts[i]->GetPlayer()->IsZombie())
