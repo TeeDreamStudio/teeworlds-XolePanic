@@ -122,12 +122,16 @@ public:
 		int m_Score;
 		int m_Authed;
 		int m_AuthTries;
+		int m_NextMapChunk;
 
 		const IConsole::CCommandInfo *m_pRconCmdToSend;
 
-		void Reset();
-
+		void Reset(bool ResetScore=true);
+		
+		int m_NbRound;
+		
 		char m_aLanguage[16];
+		int m_WaitingTime;
 		int m_WasInfected;
 		NETADDR m_Addr;
 		bool m_CustClt;
@@ -210,6 +214,8 @@ public:
 	static int DelClientCallback(int ClientID, const char *pReason, void *pUser);
 
 	void SendMap(int ClientID);
+	void SendMapData(int ClientID, int Chunk);
+
 	void SendConnectionReady(int ClientID);
 	void SendRconLine(int ClientID, const char *pLine);
 	static void SendRconLineAuthed(const char *pLine, void *pUser);
@@ -263,12 +269,18 @@ public:
 	virtual void SetClientLanguage(int ClientID, const char* pLanguage);
 	virtual int* GetIdMap(int ClientID);
 	virtual void SetCustClt(int ClientID);
+
 	virtual int IsClientInfectedBefore(int ClientID);
 	virtual void InfectClient(int ClientID);
 	virtual void UnInfectClient(int ClientID);
+
+	virtual void OnRoundIsOver();
+	virtual int GetClientNbRound(int ClientID);
+
 	virtual int GetWeaponMaxAmmo(int WID);
 	virtual int GetWeaponAmmoRegenTime(int WID);
 	virtual int GetWeaponFireDelay(int WID);
+
 	virtual void SetWeaponMaxAmmo(int WID, int MaxAmmo);
 	virtual void SetWeaponAmmoRegenTime(int WID, int RegenTime);
 	virtual void SetWeaponFireDelay(int WID, int Delay);

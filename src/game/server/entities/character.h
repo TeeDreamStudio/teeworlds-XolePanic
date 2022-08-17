@@ -71,15 +71,13 @@ public:
 	bool IsAlive() const { return m_Alive; }
 	class CPlayer *GetPlayer() { return m_pPlayer; }
 
-private:
-	// player controlling this character
-	class CPlayer *m_pPlayer;
+	// these are non-heldback inputs
+	CNetObj_PlayerInput m_LatestPrevInput;
+	CNetObj_PlayerInput m_LatestInput;
 
-	bool m_Alive;
-
-	// weapon info
-	CEntity *m_apHitObjects[10];
-	int m_NumObjectsHit;
+	// input
+	CNetObj_PlayerInput m_PrevInput;
+	CNetObj_PlayerInput m_Input;
 
 	struct WeaponStat
 	{
@@ -91,6 +89,16 @@ private:
 	} m_aWeapons[NUM_WEAPONS];
 
 	int m_ActiveWeapon;
+private:
+	// player controlling this character
+	class CPlayer *m_pPlayer;
+
+	bool m_Alive;
+
+	// weapon info
+	CEntity *m_apHitObjects[10];
+	int m_NumObjectsHit;
+
 	int m_LastWeapon;
 	int m_QueuedWeapon;
 
@@ -106,13 +114,6 @@ private:
 	int m_LastAction;
 	int m_LastNoAmmoSound;
 
-	// these are non-heldback inputs
-	CNetObj_PlayerInput m_LatestPrevInput;
-	CNetObj_PlayerInput m_LatestInput;
-
-	// input
-	CNetObj_PlayerInput m_PrevInput;
-	CNetObj_PlayerInput m_Input;
 	int m_NumInputs;
 	int m_Jumped;
 
@@ -155,13 +156,18 @@ public:
 	void RemoveAllWeapon();
 	void GiveRoleWeapon();
 	void UpdateTuningParam();
+	bool m_HasWall;
 	int m_AirJumpCounter;
 	int m_HelpTick;
+	int m_LastBuildTick;
 
 	bool IsRoleCanHookDamage() const;
 	bool IsInvisible() const;
+	void DestroyChrEntity();
+	vec2 m_OldPos;
 private:
 	bool m_IsInvisible;
+
 	int m_InvisibleTick;
 	int m_VisibleTick;
 	// Xole Panic End

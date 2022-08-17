@@ -8,6 +8,7 @@
 #include "character.h"
 #include "laser.h"
 #include "projectile.h"
+#include "building.h"
 
 //input count
 struct CInputCount
@@ -71,10 +72,12 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_InInfectZone = false;
 	m_InvisibleTick = 0;
 	m_VisibleTick = 0;
+	m_LastBuildTick = 0;
 	m_IsInvisible = false;
 
 	m_pPlayer = pPlayer;
 	m_Pos = Pos;
+	m_OldPos = Pos;
 
 	m_Core.Reset();
 	m_Core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -97,6 +100,7 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 
 void CCharacter::Destroy()
 {
+	DestroyChrEntity();
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCID()] = 0;
 	m_Alive = false;
 }
@@ -362,6 +366,12 @@ void CCharacter::FireWeapon()
 				}
 				GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE);
 			}
+			else if(GetRole() == PLAYERROLE_BUILDER && !m_HasWall)
+			{
+				new CBuilding(GameWorld(), m_Pos, m_pPlayer->GetCID(), BUILDTYPE_WALL, Direction, 200);
+				m_HasWall = true;
+				GameServer()->CreateSound(m_Pos, SOUND_RIFLE_FIRE);
+			}
 			else
 			{
 				// reset objects Hit
@@ -424,6 +434,13 @@ void CCharacter::FireWeapon()
 
 							pTarget->m_EmoteType = EMOTE_HAPPY;
 							pTarget->m_EmoteStop = Server()->Tick() + Server()->TickSpeed();
+						}
+					}else 
+					{
+						if(pTarget->IsZombie())
+						{
+							pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, 20,
+								m_pPlayer->GetCID(), m_ActiveWeapon);
 						}
 					}
 					Hits++;
@@ -728,6 +745,9 @@ void CCharacter::Tick()
 	}
 
 	UpdateTuningParam();
+
+	m_OldPos = m_Core.m_Pos;
+
 	// Previnput
 	m_PrevInput = m_Input;
 	return;
@@ -886,6 +906,7 @@ void CCharacter::Die(int Killer, int Weapon)
 	if(GameServer()->m_pController->IsInfectionStarted())
 	{
 		m_pPlayer->StartInfection();
+		DestroyChrEntity();
 	}
 
 	GameServer()->CountPlayer();
@@ -917,7 +938,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon, int TakeD
 
 	if(TakeDmgMode == TAKEDAMAGEMODE_XOLEPANIC)
 	{
-		if(((Server()->Tick() - m_LastReviveTick) / 50) >= g_Config.m_XoleReviverCDSec)
+		if(((Server()->Tick() - m_LastReviveTick) / 50) >= g_Config.m_XoleReviveCDSec)
 		{
 			m_WillDie = true;
 			m_WillDieTick = g_Config.m_XoleWillDieSec * 50;
@@ -1136,10 +1157,12 @@ void CCharacter::RemoveAllWeapon()
 
 void CCharacter::GiveRoleWeapon()
 {
+	m_LastBuildTick = 0;
+	RemoveAllWeapon();
+
 	switch (GetRole())
 	{
 		case PLAYERROLE_MEDIC:
-			RemoveAllWeapon();
 			m_Health = 10;
 			m_aWeapons[WEAPON_HAMMER].m_Got = true;
 			GiveWeapon(WEAPON_HAMMER, -1);
@@ -1148,7 +1171,6 @@ void CCharacter::GiveRoleWeapon()
 			m_ActiveWeapon = WEAPON_SHOTGUN;
 			break;
 		case PLAYERROLE_SNIPER:
-			RemoveAllWeapon();
 			m_Health = 10;
 			m_aWeapons[WEAPON_HAMMER].m_Got = true;
 			GiveWeapon(WEAPON_HAMMER, -1);
@@ -1156,9 +1178,29 @@ void CCharacter::GiveRoleWeapon()
 			GiveWeapon(WEAPON_RIFLE, 5);
 			m_ActiveWeapon = WEAPON_RIFLE;
 			break;
+		case PLAYERROLE_BUILDER:
+			m_Health = 10;
+			m_HasWall = false;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			GiveWeapon(WEAPON_GUN, 10);
+			GiveWeapon(WEAPON_SHOTGUN, 5);
+			m_ActiveWeapon = WEAPON_HAMMER;
+			break;
 		
 		case PLAYERROLE_SMOKER:
-			RemoveAllWeapon();
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			m_ActiveWeapon = WEAPON_HAMMER;
+			break;
+		case PLAYERROLE_HUNTER:
+			m_Health = 10;
+			m_aWeapons[WEAPON_HAMMER].m_Got = true;
+			GiveWeapon(WEAPON_HAMMER, -1);
+			m_ActiveWeapon = WEAPON_HAMMER;
+			break;
+		case PLAYERROLE_PICKER:
 			m_Health = 10;
 			m_aWeapons[WEAPON_HAMMER].m_Got = true;
 			GiveWeapon(WEAPON_HAMMER, -1);
@@ -1166,7 +1208,6 @@ void CCharacter::GiveRoleWeapon()
 			break;
 
 		default:
-			RemoveAllWeapon();
 			m_Health = 10;
 			m_aWeapons[WEAPON_HAMMER].m_Got = true;
 			GiveWeapon(WEAPON_HAMMER, -1);
@@ -1320,5 +1361,15 @@ bool CCharacter::IsRoleCanHookDamage() const
 bool CCharacter::IsInvisible() const
 {
 	return m_InvisibleTick > 0;
+}
+
+void CCharacter::DestroyChrEntity()
+{
+	for(CBuilding *pWall = (CBuilding *)GameWorld()->FindFirst(CGameWorld::ENTTYPE_BUILDING); 
+			pWall; pWall = (CBuilding *)pWall->TypeNext())
+	{
+		if(pWall->m_Owner != m_pPlayer->GetCID())continue;
+		GameServer()->m_World.DestroyEntity(pWall);
+	}
 }
 // XolePanic End

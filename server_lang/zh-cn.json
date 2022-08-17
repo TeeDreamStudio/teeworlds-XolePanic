@@ -185,12 +185,20 @@
             "value": "狙击手"
         },
         {
+            "key": "Builder",
+            "value": "建造者"
+        },
+        {
             "key": "Smoker",
             "value": "吸烟者"
         },
         {
             "key": "Hunter",
             "value": "猎人"
+        },
+        {
+            "key": "Picker",
+            "value": "采集者"
         },
         {
             "key": "Waring!!!Safe Zone has zombie!!!\nLife Time: {sec:Time}",

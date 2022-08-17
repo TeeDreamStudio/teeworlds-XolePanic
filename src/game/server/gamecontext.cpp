@@ -720,11 +720,13 @@ void CGameContext::OnClientEnter(int ClientID)
 {
 	//world.insert_entity(&players[client_id]);
 	m_apPlayers[ClientID]->m_IsInGame = true;
-
-	if(m_pController->IsInfectionStarted()) m_apPlayers[ClientID]->StartInfection();
+	
+	if(m_pController->IsInfectionStarted())
+		m_apPlayers[ClientID]->StartInfection();
 	else m_apPlayers[ClientID]->SetRole(PLAYERROLE_MEDIC);
 	
-	m_apPlayers[ClientID]->TryRespawn();
+	m_apPlayers[ClientID]->Respawn();
+
 	char aBuf[512];
 	str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientID), m_pController->GetTeamName(m_apPlayers[ClientID]->GetTeam()));
 	SendChatTarget(-1, _("'{str:PlayerName}' entered and joined the game"),"PlayerName", Server()->ClientName(ClientID), NULL);
@@ -799,6 +801,13 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
 	void *pRawMsg = m_NetObjHandler.SecureUnpackMsg(MsgID, pUnpacker);
 	CPlayer *pPlayer = m_apPlayers[ClientID];
+
+	// No Dummy
+	if(Server()->GetClientNbRound(ClientID) == 0 && !pPlayer)
+	{
+		Server()->Kick(ClientID, "Kicked (is probably a dummy)");
+		return;
+	}
 
 	if(!pRawMsg)
 	{
@@ -907,8 +916,9 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			if(pPlayer->m_LastVoteCall && Timeleft > 0)
 			{
 				char aChatmsg[512] = {0};
+				int Time = (Timeleft/Server()->TickSpeed())+1;
 				str_format(aChatmsg, sizeof(aChatmsg), _("You must wait %d seconds before making another vote"), (Timeleft/Server()->TickSpeed())+1);
-				SendChatTarget(ClientID, _("You must wait {sec:Time} seconds before making another vote"), "Time", (Timeleft/Server()->TickSpeed())+1);
+				SendChatTarget(ClientID, _("You must wait {sec:Time} seconds before making another vote"), "Time", &Time);
 				return;
 			}
 
@@ -1960,14 +1970,19 @@ void CGameContext::OnPostSnap()
 	m_Events.Clear();
 }
 
-bool CGameContext::IsClientReady(int ClientID)
+bool CGameContext::IsClientReady(int ClientID) const
 {
 	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->m_IsReady ? true : false;
 }
 
-bool CGameContext::IsClientPlayer(int ClientID)
+bool CGameContext::IsClientPlayer(int ClientID) const
 {
 	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->GetTeam() == TEAM_SPECTATORS ? false : true;
+}
+
+bool CGameContext::IsClientBot(int ClientID) const
+{
+	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->IsBot();
 }
 
 const char *CGameContext::GameType() { return m_pController && m_pController->m_pGameType ? m_pController->m_pGameType : ""; }
@@ -1985,9 +2000,12 @@ const char *CGameContext::GetRoleName(int Role)
 		//Human
 		case PLAYERROLE_MEDIC: return "Medic"; break;
 		case PLAYERROLE_SNIPER: return "Sniper"; break;
+		case PLAYERROLE_BUILDER: return "Builder"; break;
 		//zombie
 		case PLAYERROLE_SMOKER: return "Smoker"; break;
 		case PLAYERROLE_HUNTER: return "Hunter"; break;
+		case PLAYERROLE_PICKER: return "Picker"; break;
+
 
 		default: return "????"; break;
 	}

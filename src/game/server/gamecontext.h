@@ -228,8 +228,9 @@ public:
 	virtual void OnClientDirectInput(int ClientID, void *pInput);
 	virtual void OnClientPredictedInput(int ClientID, void *pInput);
 
-	virtual bool IsClientReady(int ClientID);
-	virtual bool IsClientPlayer(int ClientID);
+	virtual bool IsClientReady(int ClientID) const;
+	virtual bool IsClientPlayer(int ClientID) const;
+	virtual bool IsClientBot(int ClientID) const;
 
 	virtual void OnSetAuthed(int ClientID,int Level);
 	

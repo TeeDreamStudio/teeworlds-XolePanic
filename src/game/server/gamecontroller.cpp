@@ -78,6 +78,7 @@ void IGameController::EndRound()
 		return;
 
 	GameServer()->m_World.m_Paused = true;
+	Server()->OnRoundIsOver();
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
 }

@@ -211,12 +211,6 @@ void CCollision::Init(class CLayers *pLayers)
 		case TILE_NOHOOK:
 			m_pTiles[i].m_Index = COLFLAG_SOLID|COLFLAG_NOHOOK;
 			break;
-		case TILE_SAFEZONE:
-			m_pTiles[i].m_Index = COLFLAG_SAFEZONE;
-			break;
-		case TILE_INFECTZONE:
-			m_pTiles[i].m_Index = COLFLAG_INFECTZONE;
-			break;
 		default:
 			m_pTiles[i].m_Index = 0;
 			break;

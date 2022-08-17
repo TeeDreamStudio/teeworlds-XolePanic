@@ -393,6 +393,7 @@ void CPlayer::SetRole(int Role)
 	GameServer()->CountPlayer();
 	if(m_pCharacter)
 	{
+		m_pCharacter->DestroyChrEntity();
 		m_pCharacter->GiveRoleWeapon();
 	}
 }
@@ -422,6 +423,11 @@ void CPlayer::SetRoleSkin(int Role)
 			m_TeeInfos.m_UseCustomColor = 0;
 			str_copy(m_TeeInfos.m_SkinName, "coala", sizeof(m_TeeInfos.m_SkinName));
 			break;
+		case PLAYERROLE_BUILDER:
+			m_TeeInfos.m_UseCustomColor = 0;
+			str_copy(m_TeeInfos.m_SkinName, "bluekitty", sizeof(m_TeeInfos.m_SkinName));
+			break;
+		
 		case PLAYERROLE_SMOKER:
 			m_TeeInfos.m_UseCustomColor = 1;
 			str_copy(m_TeeInfos.m_SkinName, "cammostripes", sizeof(m_TeeInfos.m_SkinName));
@@ -431,6 +437,12 @@ void CPlayer::SetRoleSkin(int Role)
 		case PLAYERROLE_HUNTER:
 			m_TeeInfos.m_UseCustomColor = 1;
 			str_copy(m_TeeInfos.m_SkinName, "warpaint", sizeof(m_TeeInfos.m_SkinName));
+			m_TeeInfos.m_ColorBody = 0;
+			m_TeeInfos.m_ColorFeet = 0;
+			break;
+		case PLAYERROLE_PICKER:
+			m_TeeInfos.m_UseCustomColor = 1;
+			str_copy(m_TeeInfos.m_SkinName, "coala", sizeof(m_TeeInfos.m_SkinName));
 			m_TeeInfos.m_ColorBody = 0;
 			m_TeeInfos.m_ColorFeet = 0;
 			break;
